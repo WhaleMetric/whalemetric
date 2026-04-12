@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd modules/metrics && npm run build",
+  "outputDirectory": "modules/metrics/.next",
+  "installCommand": "cd modules/metrics && npm install",
+  "framework": "nextjs"
+}
