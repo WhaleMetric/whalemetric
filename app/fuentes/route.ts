@@ -25,7 +25,6 @@ const html = `
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
   }
   body { font-family: var(--font); background: var(--bg-subtle); color: var(--text-primary); -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.5; }
   .app { display: flex; min-height: 100vh; }
@@ -92,13 +91,13 @@ const html = `
   .group-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-tertiary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
   .group-count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--bg-muted); color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
 
-  /* CARDS GRID */
+  /* CARDS */
   .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .source-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow 150ms ease; animation: fadeIn 300ms ease both; }
   .source-card:hover { box-shadow: var(--shadow-sm); }
   .card-top { display: flex; align-items: center; gap: 12px; }
   .card-logo { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-muted); object-fit: contain; padding: 4px; flex-shrink: 0; }
-  .card-logo-placeholder { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-muted); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: var(--text-tertiary); flex-shrink: 0; }
+  .card-logo-placeholder { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-muted); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--text-tertiary); flex-shrink: 0; }
   .card-info { flex: 1; min-width: 0; }
   .card-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .card-lang { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
@@ -109,7 +108,7 @@ const html = `
   .btn-config { padding: 5px 10px; font-size: 12px; border-radius: 5px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-weight: 500; transition: all 150ms ease; }
   .btn-config:hover { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--text-secondary); }
 
-  /* EMPTY */
+  /* MISC */
   .empty-state { text-align: center; padding: 48px 20px; color: var(--text-tertiary); }
   .empty-state svg { width: 32px; height: 32px; margin: 0 auto 12px; display: block; opacity: 0.3; }
   .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 40px auto; }
@@ -220,9 +219,7 @@ const html = `
         <button class="tab" onclick="setTab('radio', this)">Radio</button>
       </div>
 
-      <div id="content-area">
-        <div class="spinner"></div>
-      </div>
+      <div id="content-area"><div class="spinner"></div></div>
     </div>
   </main>
 </div>
@@ -233,40 +230,21 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const INTERNACIONAL = ['Al Jazeera','CNN','France 24','BBC'];
-const AUTONOMICO = ['TV3','8TV','RAC1','Catalunya Ràdio','CatalunyaPress','Nació Digital','Vilaweb','ARA','El Nacional','Tot Badalona','La Ciutat','El Mon','Puntauvui'];
-
-const LANG = {
-  'TV3': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'RAC1': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'Catalunya Ràdio': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿',
-  'CatalunyaPress': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'Nació Digital': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'Vilaweb': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿',
-  'ARA': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'El Nacional': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'El Mon': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿',
-  'Puntauvui': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', 'La Ciutat': 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿',
-  'CNN': 'Inglés 🇬🇧', 'BBC': 'Inglés 🇬🇧',
-  'France 24': 'Francés 🇫🇷',
-  'Al Jazeera': 'Árabe / Inglés 🇶🇦',
-};
+const LANG_FLAGS = { ca: 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', es: 'Español 🇪🇸', en: 'Inglés 🇬🇧', fr: 'Francés 🇫🇷' };
+const SCOPE_LABELS = { international: 'Internacionales', regional: 'Regionales', national: 'Estatales' };
+const SCOPE_ORDER = ['international', 'regional', 'national'];
 
 let allSources = [];
 let currentTab = 'all';
 let searchQuery = '';
 let searchTimeout = null;
 
-function getGroup(name) {
-  if (INTERNACIONAL.includes(name)) return 'internacional';
-  if (AUTONOMICO.some(n => name.toLowerCase().includes(n.toLowerCase()) || n.toLowerCase().includes(name.toLowerCase()))) return 'autonomico';
-  return 'estatal';
-}
-
-function getLang(name) {
-  return LANG[name] || 'Español 🇪🇸';
-}
-
 async function loadSources() {
   document.getElementById('content-area').innerHTML = '<div class="spinner"></div>';
   try {
     const { data, error } = await db
       .from('sources')
-      .select('id, name, type, icon_url, website')
+      .select('id, name, type, scope, country_code, language_code, icon_url, website')
       .order('name');
     if (error) throw error;
     allSources = data || [];
@@ -274,7 +252,7 @@ async function loadSources() {
     render();
   } catch(e) {
     document.getElementById('content-area').innerHTML =
-      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Error al cargar: ' + e.message + '</p></div>';
+      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Error: ' + escHtml(e.message) + '</p></div>';
   }
 }
 
@@ -298,58 +276,50 @@ function render() {
   if (currentTab !== 'all') sources = sources.filter(s => s.type === currentTab);
   if (searchQuery) sources = sources.filter(s => s.name.toLowerCase().includes(searchQuery));
 
-  const groups = {
-    estatal:      { label: 'Estatales',                 items: [] },
-    autonomico:   { label: 'Autonómicos / Regionales',  items: [] },
-    internacional:{ label: 'Internacionales',           items: [] },
-  };
+  const groups = {};
+  SCOPE_ORDER.forEach(k => groups[k] = []);
 
   sources.forEach(s => {
-    const g = getGroup(s.name);
-    groups[g].items.push(s);
+    const scope = s.scope || 'national';
+    if (groups[scope]) groups[scope].push(s);
+    else groups['national'].push(s);
   });
 
   const total = sources.length;
-  document.getElementById('subtitle').textContent = total + ' fuente' + (total !== 1 ? 's' : '') + (searchQuery || currentTab !== 'all' ? ' (filtradas)' : ' en total');
+  document.getElementById('subtitle').textContent =
+    total + ' fuente' + (total !== 1 ? 's' : '') + (searchQuery || currentTab !== 'all' ? ' (filtradas)' : ' en total');
 
   if (total === 0) {
     document.getElementById('content-area').innerHTML =
-      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados para esta búsqueda</p></div>';
+      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados</p></div>';
     return;
   }
 
-  const groupOrder = ['estatal','autonomico','internacional'];
   let html = '';
   let delay = 0;
-  groupOrder.forEach(key => {
-    const g = groups[key];
-    if (!g.items.length) return;
+  SCOPE_ORDER.forEach(key => {
+    const items = groups[key];
+    if (!items.length) return;
     html += '<div class="group">';
-    html += '<div class="group-header">' + g.label + ' <span class="group-count">' + g.items.length + '</span></div>';
+    html += '<div class="group-header">' + SCOPE_LABELS[key] + ' <span class="group-count">' + items.length + '</span></div>';
     html += '<div class="cards-grid">';
-    g.items.forEach(s => {
-      const lang = getLang(s.name);
+    items.forEach(s => {
+      const lang = LANG_FLAGS[s.language_code] || 'Español 🇪🇸';
       const hasIcon = !!s.icon_url;
       const logoHtml = hasIcon
         ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">'
-          + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
-        : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>';
+          + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0)) + '</div>'
+        : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0)) + '</div>';
       const badge = hasIcon
         ? '<span class="badge-ok">RSS OK</span>'
         : '<span class="badge-none">Sin configurar</span>';
       html += '<div class="source-card" style="animation-delay:' + delay + 'ms">'
-        + '<div class="card-top">'
-        + logoHtml
-        + '<div class="card-info">'
-        + '<div class="card-name">' + escHtml(s.name) + '</div>'
-        + '<div class="card-lang">' + lang + '</div>'
-        + '</div>'
-        + '</div>'
-        + '<div class="card-bottom">'
-        + badge
+        + '<div class="card-top">' + logoHtml
+        + '<div class="card-info"><div class="card-name">' + escHtml(s.name) + '</div>'
+        + '<div class="card-lang">' + lang + '</div></div></div>'
+        + '<div class="card-bottom">' + badge
         + '<button class="btn-config" onclick="configurar('' + escHtml(s.name) + '')">Configurar</button>'
-        + '</div>'
-        + '</div>';
+        + '</div></div>';
       delay = (delay + 30) % 300;
     });
     html += '</div></div>';
@@ -363,7 +333,7 @@ function configurar(name) {
 }
 
 function escHtml(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function toggleSidebar() {
