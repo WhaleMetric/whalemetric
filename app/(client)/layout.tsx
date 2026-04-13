@@ -1,5 +1,12 @@
+import type { Metadata } from "next";
 import ThemeProvider from "@/components/client/ThemeProvider";
 import Sidebar from "@/components/client/Sidebar";
+import "./client.css";
+
+export const metadata: Metadata = {
+  title: "WhaleMetric",
+  description: "Portal cliente WhaleMetric",
+};
 
 export default function ClientLayout({
   children,
@@ -7,11 +14,22 @@ export default function ClientLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ThemeProvider>
-      <div className="flex min-h-screen bg-white dark:bg-[#0A0A0A]">
-        <Sidebar />
-        <main className="flex-1 min-w-0">{children}</main>
-      </div>
-    </ThemeProvider>
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>
+        <ThemeProvider>
+          <div style={{ display: "flex", minHeight: "100vh" }}>
+            <Sidebar />
+            <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+          </div>
+        </ThemeProvider>
+      </body>
+    </html>
   );
 }

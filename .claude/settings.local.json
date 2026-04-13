@@ -31,7 +31,10 @@
       "Bash(cp \"public/logos/ps_cronicaglobal.png\" public/logos/)",
       "Bash(cp \"public/logos/ps_huffingtonpost.png\" public/logos/)",
       "Bash(cp \"public/logos/tv_bbc.png\" public/logos/)",
-      "Bash(cp \"public/logos/tv_rt.png\" public/logos/)"
+      "Bash(cp \"public/logos/tv_rt.png\" public/logos/)",
+      "Bash(git config:*)",
+      "Bash(git remote:*)",
+      "Bash(npx next:*)"
     ]
   }
 }
