@@ -18,7 +18,9 @@
       "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric log --oneline -1)",
       "Bash(grep -n \"source_icon\\\\|source_name\\\\|td-title\\\\|titleEl\\\\|type-badge\\\\|date-cell\\\\|tbody.innerHTML = slice\\\\|return \\\\`<tr>\" C:/Users/oriol/Desktop/proyectos/whalemetric/app/admin/route.ts)",
       "Bash(curl -s https://whalemetric-9uwz-i7z3mgn9i-whalemetrics-projects.vercel.app/admin)",
-      "Bash(curl -s -I https://whalemetric.com/admin)"
+      "Bash(curl -s -I https://whalemetric.com/admin)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric status --short)",
+      "Bash(node C:/Users/oriol/Desktop/proyectos/gen-fuentes.js)"
     ]
   }
 }
