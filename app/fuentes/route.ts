@@ -173,7 +173,7 @@ const html = `
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="/admin" class="logo">
-        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:28px;width:auto;display:block;">
+        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:19px;width:auto;display:block;">
       </a>
     </div>
 

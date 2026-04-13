@@ -161,11 +161,11 @@ const html = `
   .source-pill { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); background: var(--bg-muted); padding: 3px 8px; border-radius: 4px; white-space: nowrap; }
   .source-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 
-  .type-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; }
-  .type-prensa_digital  { background: var(--blue-bg);   color: var(--blue-text); }
-  .type-prensa_escrita  { background: var(--amber-bg);  color: var(--amber-text); }
-  .type-television      { background: var(--purple-bg); color: var(--purple-text); }
-  .type-radio           { background: var(--green-bg);  color: var(--green-text); }
+  .type-badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 500; white-space: nowrap; background:#F5F5F5; color:#555; }
+  .type-prensa_digital  { background:#F5F5F5; color:#555; }
+  .type-prensa_escrita  { background:#F5F5F5; color:#555; }
+  .type-television      { background:#F5F5F5; color:#555; }
+  .type-radio           { background:#F5F5F5; color:#555; }
 
   .date-cell { font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
 
@@ -220,7 +220,7 @@ const html = `
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="/admin" class="logo">
-        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:28px;width:auto;display:block;">
+        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:19px;width:auto;display:block;">
       </a>
     </div>
 
@@ -395,13 +395,14 @@ const html = `
               <tr>
                 <th>Fuente</th>
                 <th>Titular y descripción</th>
-                <th>Tipo</th>
-                <th onclick="setSort('published_at')" id="th-published_at">Fecha <span class="sort-icon active" id="si-published_at">↓</span></th>
-                <th>Enlace</th>
+                <th style="width:80px;white-space:nowrap">Tipo</th>
+                <th style="width:90px;white-space:nowrap">IA</th>
+                <th onclick="setSort('published_at')" id="th-published_at" style="width:100px;white-space:nowrap">Fecha <span class="sort-icon active" id="si-published_at">↓</span></th>
+                <th style="width:90px;white-space:nowrap">Ver artículo</th>
               </tr>
             </thead>
             <tbody id="news-tbody">
-              <tr><td colspan="5"><div class="state-box"><div class="spinner"></div></td></tr>
+              <tr><td colspan="6"><div class="state-box"><div class="spinner"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -460,7 +461,8 @@ async function loadData() {
       .from('news')
       .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
       .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .order('published_at', { ascending: false });
+      .order('published_at', { ascending: false })
+      .limit(2500);
 
     if (error) throw error;
 
@@ -561,7 +563,7 @@ function renderTable() {
       : \`\${state.filtered.length} de \${state.allNews.length}\`;
 
   if (slice.length === 0) {
-    tbody.innerHTML = \`<tr><td colspan="5"><div class="state-box">
+    tbody.innerHTML = \`<tr><td colspan="6"><div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <p>Sin resultados</p><small>Prueba con otros filtros</small>
     </div></td></tr>\`;
@@ -574,16 +576,17 @@ function renderTable() {
             <img src="\${n.source_icon || ''}" alt="\${escHtml(n.source_name)}"
               style="width:28px;height:28px;object-fit:contain;border-radius:6px;background:#f5f5f5;padding:2px;"
               onerror="this.style.display='none'">
-            <span style="font-size:12px;font-weight:500;color:var(--text-primary)">\${escHtml(n.source_name)}</span>
+            <span style="font-size:12px;font-weight:600;color:var(--text-primary)">\${escHtml(n.source_name)}</span>
           </div>
         </td>
         <td style="max-width:480px;white-space:normal;line-height:1.5">
           <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px">\${escHtml(n.title)}</div>
-          <div style="font-size:12px;color:var(--text-secondary);line-height:1.4">\${escHtml(truncate(n.description || '', 150))}</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.4">\${escHtml(stripHtml(n.description || ''))}</div>
         </td>
-        <td><span class="type-badge type-\${n.source_type}">\${TYPE_LABELS[n.source_type] || n.source_type}</span></td>
-        <td class="date-cell">\${date}</td>
-        <td>\${n.url ? \`<a href="\${escHtml(n.url)}" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;white-space:nowrap;">Ver artículo →</a>\` : '—'}</td>
+        <td style="white-space:nowrap"><span class="type-badge type-\${n.source_type}">\${TYPE_LABELS[n.source_type] || n.source_type}</span></td>
+        <td style="white-space:nowrap"><span style="display:inline-flex;align-items:center;gap:5px;background:#F5F5F5;color:#666;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#D1D5DB;flex-shrink:0"></span>Pendiente</span></td>
+        <td class="date-cell" style="white-space:nowrap">\${date}</td>
+        <td style="white-space:nowrap">\${n.url ? \`<a href="\${escHtml(n.url)}" target="_blank" style="display:inline-block;padding:4px 10px;border:1px solid #E5E7EB;border-radius:5px;font-size:11px;color:#555;text-decoration:none;background:#fff;white-space:nowrap">Ver →</a>\` : '—'}</td>
       </tr>\`;
     }).join('');
   }
@@ -692,11 +695,11 @@ function openAddSource() { alert('Próximamente: formulario para añadir fuente'
 function openTranscriptions() { alert('Próximamente: visor de transcripciones'); }
 
 function showLoading() {
-  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="5"><div class="state-box"><div class="spinner"></div><p style="margin-top:12px">Cargando noticias...</p></div></td></tr>\`;
+  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="6"><div class="state-box"><div class="spinner"></div><p style="margin-top:12px">Cargando noticias...</p></div></td></tr>\`;
 }
 
 function showError(msg) {
-  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="5"><div class="state-box">
+  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="6"><div class="state-box">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <p>Error al cargar</p><small>\${escHtml(msg)}</small>
   </div></td></tr>\`;
@@ -710,6 +713,9 @@ function formatDate(iso) {
 }
 
 function truncate(str, n) { return str && str.length > n ? str.slice(0, n) + '…' : str; }
+function stripHtml(html) {
+  return html.replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').trim();
+}
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
