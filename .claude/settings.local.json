@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --no-src-dir --app --import-alias \"@/*\")",
+      "Bash(npm install:*)",
+      "Bash(npx vercel:*)",
+      "Bash(npm run:*)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric log --oneline -5)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric status)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric log --oneline -3)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric push origin main)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric remote -v)",
+      "Bash(curl -s https://whalemetric.com/admin)",
+      "Bash(node -e ':*)",
+      "Bash(node C:/Users/oriol/Desktop/proyectos/embed-admin.js)",
+      "Bash(cp -r modules/metrics/* .)",
+      "Bash(cp -r modules/metrics/.* .)"
+    ]
+  }
+}
