@@ -331,8 +331,11 @@ const html = `
         <input type="text" id="add-url" class="form-input" placeholder="https://...">
       </div>
       <div class="form-group">
-        <label class="form-label">Logo <span>(nombre del fichero, opcional)</span></label>
-        <input type="text" id="add-logo" class="form-input" placeholder="Ej: ps_elpais.png">
+        <label class="form-label">Logo <span>(opcional)</span></label>
+        <input type="file" id="add-logo" accept="image/png,image/jpeg,image/webp" class="form-input" style="padding:6px;" onchange="previewLogo(this)">
+        <div id="logo-preview" style="display:none;margin-top:8px;">
+          <img id="logo-preview-img" style="width:48px;height:48px;object-fit:contain;border-radius:6px;background:#f5f5f5;padding:4px;">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -502,9 +505,18 @@ function openAddSourceModal() {
   document.getElementById('add-lang').value = 'es';
   document.getElementById('add-url').value = '';
   document.getElementById('add-logo').value = '';
+  document.getElementById('logo-preview').style.display = 'none';
+  document.getElementById('logo-preview-img').src = '';
   document.getElementById('msg-add').innerHTML = '';
   updateUrlLabel();
   openModal('modalAdd');
+}
+function previewLogo(input) {
+  const file = input.files && input.files[0];
+  if (!file) { document.getElementById('logo-preview').style.display = 'none'; return; }
+  const url = URL.createObjectURL(file);
+  document.getElementById('logo-preview-img').src = url;
+  document.getElementById('logo-preview').style.display = 'block';
 }
 function updateUrlLabel() {
   const t = document.getElementById('add-type').value;
@@ -516,8 +528,20 @@ async function saveNewSource() {
   const scope = document.getElementById('add-scope').value;
   const language_code = document.getElementById('add-lang').value;
   const website = document.getElementById('add-url').value.trim();
-  const icon_url = document.getElementById('add-logo').value.trim() ? '/logos/' + document.getElementById('add-logo').value.trim() : '';
   if (!name) { showMsg('msg-add', 'error', 'El nombre es obligatorio.'); return; }
+  let icon_url = null;
+  const fileInput = document.getElementById('add-logo');
+  const file = fileInput.files && fileInput.files[0];
+  if (file) {
+    try {
+      const ext = file.name.split('.').pop();
+      const fileName = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now() + '.' + ext;
+      const { error: upErr } = await db.storage.from('logos').upload(fileName, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = db.storage.from('logos').getPublicUrl(fileName);
+      icon_url = urlData.publicUrl;
+    } catch(e) { showMsg('msg-add', 'error', 'Error subiendo logo: ' + e.message); return; }
+  }
   try {
     const { error } = await db.from('sources').insert({ name, type, scope, language_code, website, icon_url });
     if (error) throw error;

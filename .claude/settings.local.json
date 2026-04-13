@@ -26,7 +26,12 @@
       "Bash(cp \"C:/Users/oriol/Desktop/proyectos/WhaleMetric/public/logos/tv_la1.png\" public/logos/)",
       "Bash(cp \"C:/Users/oriol/Desktop/proyectos/WhaleMetric/public/logos/tv_lasexta.png\" public/logos/)",
       "Bash(cp \"C:/Users/oriol/Desktop/proyectos/WhaleMetric/public/logos/tv_cuatro.png\" public/logos/)",
-      "Bash(ls C:/Users/oriol/Desktop/proyectos/whalemetric/public/logos/tv_*.png)"
+      "Bash(ls C:/Users/oriol/Desktop/proyectos/whalemetric/public/logos/tv_*.png)",
+      "Bash(cp \"public/logos/tv_beteve.png\" public/logos/)",
+      "Bash(cp \"public/logos/ps_cronicaglobal.png\" public/logos/)",
+      "Bash(cp \"public/logos/ps_huffingtonpost.png\" public/logos/)",
+      "Bash(cp \"public/logos/tv_bbc.png\" public/logos/)",
+      "Bash(cp \"public/logos/tv_rt.png\" public/logos/)"
     ]
   }
 }
