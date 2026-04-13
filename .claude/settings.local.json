@@ -14,7 +14,9 @@
       "Bash(node -e ':*)",
       "Bash(node C:/Users/oriol/Desktop/proyectos/embed-admin.js)",
       "Bash(cp -r modules/metrics/* .)",
-      "Bash(cp -r modules/metrics/.* .)"
+      "Bash(cp -r modules/metrics/.* .)",
+      "Bash(git -C C:/Users/oriol/Desktop/proyectos/whalemetric log --oneline -1)",
+      "Bash(grep -n \"source_icon\\\\|source_name\\\\|td-title\\\\|titleEl\\\\|type-badge\\\\|date-cell\\\\|tbody.innerHTML = slice\\\\|return \\\\`<tr>\" C:/Users/oriol/Desktop/proyectos/whalemetric/app/admin/route.ts)"
     ]
   }
 }

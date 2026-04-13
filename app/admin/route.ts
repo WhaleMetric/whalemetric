@@ -399,14 +399,15 @@ const html = `
           <table>
             <thead>
               <tr>
+                <th>Fuente</th>
                 <th onclick="setSort('title')" id="th-title">Titular <span class="sort-icon" id="si-title">↕</span></th>
-                <th onclick="setSort('source')" id="th-source">Fuente <span class="sort-icon" id="si-source">↕</span></th>
                 <th>Tipo</th>
                 <th onclick="setSort('published_at')" id="th-published_at">Fecha <span class="sort-icon active" id="si-published_at">↓</span></th>
+                <th>Enlace</th>
               </tr>
             </thead>
             <tbody id="news-tbody">
-              <tr><td colspan="4"><div class="state-box"><div class="spinner"></div></td></tr>
+              <tr><td colspan="5"><div class="state-box"><div class="spinner"></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -463,7 +464,7 @@ async function loadData() {
   try {
     const { data, error } = await db
       .from('news')
-      .select(\`id, title, description, url, published_at, created_at, sources(name, type)\`)
+      .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
       .order('published_at', { ascending: false });
 
     if (error) throw error;
@@ -477,6 +478,7 @@ async function loadData() {
       created_at: n.created_at,
       source_name: n.sources?.name || '—',
       source_type: n.sources?.type || '',
+      source_icon: n.sources?.icon_url || '',
     }));
 
     updateKPIs();
@@ -564,23 +566,28 @@ function renderTable() {
       : \`\${state.filtered.length} de \${state.allNews.length}\`;
 
   if (slice.length === 0) {
-    tbody.innerHTML = \`<tr><td colspan="4"><div class="state-box">
+    tbody.innerHTML = \`<tr><td colspan="5"><div class="state-box">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <p>Sin resultados</p><small>Prueba con otros filtros</small>
     </div></td></tr>\`;
   } else {
     tbody.innerHTML = slice.map(n => {
       const date = n.published_at ? formatDate(n.published_at) : '—';
-      const typeLabel = TYPE_LABELS[n.source_type] || n.source_type;
-      const color = SOURCE_COLORS[n.source_type] || '#9CA3AF';
-      const titleEl = n.url
-        ? \`<a href="\${escHtml(n.url)}" target="_blank" title="\${escHtml(n.title)}">\${escHtml(truncate(n.title, 80))}</a>\`
-        : \`<span title="\${escHtml(n.title)}">\${escHtml(truncate(n.title, 80))}</span>\`;
       return \`<tr>
-        <td class="td-title">\${titleEl}</td>
-        <td><span class="source-pill"><span class="source-dot" style="background:\${color}"></span>\${escHtml(n.source_name)}</span></td>
-        <td><span class="type-badge type-\${n.source_type}">\${typeLabel}</span></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <img src="\${n.source_icon || ''}" alt="\${escHtml(n.source_name)}"
+              style="width:32px;height:32px;object-fit:contain;border-radius:4px;background:#f5f5f5;padding:2px;"
+              onerror="this.style.display='none'">
+            <span style="font-size:12px;font-weight:500;color:var(--text-primary)">\${escHtml(n.source_name)}</span>
+          </div>
+        </td>
+        <td style="max-width:480px;white-space:normal;line-height:1.4;font-weight:500;color:var(--text-primary)">
+          \${escHtml(n.title)}
+        </td>
+        <td><span class="type-badge type-\${n.source_type}">\${TYPE_LABELS[n.source_type] || n.source_type}</span></td>
         <td class="date-cell">\${date}</td>
+        <td>\${n.url ? \`<a href="\${escHtml(n.url)}" target="_blank" style="font-size:12px;color:var(--blue);text-decoration:none;white-space:nowrap;">Ver artículo →</a>\` : '—'}</td>
       </tr>\`;
     }).join('');
   }
@@ -689,11 +696,11 @@ function openAddSource() { alert('Próximamente: formulario para añadir fuente'
 function openTranscriptions() { alert('Próximamente: visor de transcripciones'); }
 
 function showLoading() {
-  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="4"><div class="state-box"><div class="spinner"></div><p style="margin-top:12px">Cargando noticias...</p></div></td></tr>\`;
+  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="5"><div class="state-box"><div class="spinner"></div><p style="margin-top:12px">Cargando noticias...</p></div></td></tr>\`;
 }
 
 function showError(msg) {
-  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="4"><div class="state-box">
+  document.getElementById('news-tbody').innerHTML = \`<tr><td colspan="5"><div class="state-box">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     <p>Error al cargar</p><small>\${escHtml(msg)}</small>
   </div></td></tr>\`;
