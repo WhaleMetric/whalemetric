@@ -24,10 +24,8 @@ export default function ClientLayout({
       </head>
       <body>
         <ThemeProvider>
-          <div style={{ display: "flex", minHeight: "100vh" }}>
-            <Sidebar />
-            <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
-          </div>
+          <Sidebar />
+          <main className="client-main">{children}</main>
         </ThemeProvider>
       </body>
     </html>
