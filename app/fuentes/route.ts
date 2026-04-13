@@ -26,6 +26,7 @@ const html = `
     --radius: 8px; --radius-sm: 6px;
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
     --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
   }
@@ -36,9 +37,6 @@ const html = `
   .sidebar { width: var(--sidebar-w); background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 40; transition: transform 300ms ease; }
   .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--border-light); }
   .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-primary); }
-  .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700; letter-spacing: -0.5px; }
-  .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
-  .logo-text span { color: var(--text-tertiary); font-weight: 400; font-size: 12px; margin-left: 4px; }
   .sidebar-btn { margin: 12px 16px 0; padding: 9px 14px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 150ms ease; justify-content: center; text-decoration: none; }
   .sidebar-btn:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
   .sidebar-btn-secondary { margin: 8px 16px 0; padding: 9px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 150ms ease; justify-content: center; }
@@ -50,16 +48,16 @@ const html = `
   .nav-item.active { color: var(--text-primary); background: var(--bg-subtle); border-left-color: var(--accent); font-weight: 550; }
   .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.55; }
   .nav-item.active svg { opacity: 0.85; }
-  .nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--blue-bg); color: var(--blue-text); }
   .nav-divider { height: 1px; background: var(--border-light); margin: 8px 16px; }
-  .admin-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--purple-bg); color: var(--purple-text); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; margin: 8px 16px 0; }
   .sidebar-footer { padding: 14px 16px; border-top: 1px solid var(--border-light); }
   .user-block { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; transition: background 150ms ease; }
   .user-block:hover { background: var(--bg-subtle); }
   .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; flex-shrink: 0; }
   .user-info { flex: 1; min-width: 0; }
-  .user-name { font-size: 13px; font-weight: 550; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .user-name { font-size: 13px; font-weight: 550; color: var(--text-primary); }
   .user-role { font-size: 11px; color: var(--purple-text); font-weight: 500; }
+  .sidebar-overlay { display: none; }
+  .mobile-menu-btn { display: none; }
 
   /* ═══ MAIN ═══ */
   .main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
@@ -69,10 +67,11 @@ const html = `
   .breadcrumb-current { color: var(--text-primary); font-weight: 500; }
   .header-right { display: flex; align-items: center; gap: 10px; }
   .btn { padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 150ms ease; border: 1px solid transparent; text-decoration: none; }
+  .btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
   .btn-secondary { background: var(--bg); color: var(--text-secondary); border-color: var(--border); }
   .btn-secondary:hover { background: var(--bg-subtle); color: var(--text-primary); }
   .btn svg { width: 14px; height: 14px; }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .content { flex: 1; padding: 28px; }
   .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
   .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
@@ -85,9 +84,7 @@ const html = `
   .search-bar input { width: 100%; height: 38px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; }
   .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,10,10,0.06); }
   .search-bar input::placeholder { color: var(--text-tertiary); }
-
-  /* ═══ TABS ═══ */
-  .tabs { display: flex; gap: 2px; background: var(--bg-muted); border-radius: var(--radius); padding: 3px; flex: 1; width: auto; }
+  .tabs { display: flex; gap: 2px; background: var(--bg-muted); border-radius: var(--radius); padding: 3px; flex: 1; }
   .tab { padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all 150ms ease; white-space: nowrap; }
   .tab:hover { color: var(--text-primary); }
   .tab.active { background: var(--bg); color: var(--text-primary); box-shadow: var(--shadow-xs); font-weight: 600; }
@@ -104,15 +101,8 @@ const html = `
   .card-logo-placeholder { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-muted); display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 700; color: var(--text-tertiary); flex-shrink: 0; }
   .card-info { flex: 1; min-width: 0; }
   .card-name { font-size: 14px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .card-lang { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .card-lang { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
   .card-bottom { display: flex; align-items: center; justify-content: space-between; }
-  .badge-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--green-bg); color: var(--green-text); }
-  .badge-ok::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
-  .badge-none { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 4px; background: var(--bg-muted); color: var(--text-tertiary); }
-  .badge-stream { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--purple-bg); color: var(--purple-text); }
-  .badge-stream::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
-  .badge-text { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--blue-bg); color: var(--blue-text); }
-  .badge-text::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
   .badges-group { display: flex; gap: 4px; flex-wrap: wrap; }
   .btn-config { padding: 5px 10px; font-size: 12px; border-radius: 5px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-weight: 500; transition: all 150ms ease; }
   .btn-config:hover { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--text-secondary); }
@@ -124,14 +114,42 @@ const html = `
   .state-box small { font-size: 12px; margin-top: 4px; display: block; }
   .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 40px auto; }
 
+  /* ═══ MODAL ═══ */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--bg); border-radius: 12px; box-shadow: var(--shadow-md); width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; animation: modalIn 200ms ease; }
+  .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .modal-title { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+  .modal-close { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-tertiary); transition: all 150ms ease; flex-shrink: 0; }
+  .modal-close:hover { background: var(--bg-muted); color: var(--text-primary); }
+  .modal-body { padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border-light); display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 13px; font-weight: 500; color: var(--text-primary); }
+  .form-label span { color: var(--text-tertiary); font-weight: 400; }
+  .form-input { height: 38px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; width: 100%; }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,10,10,0.06); }
+  .form-select { height: 38px; padding: 0 28px 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; width: 100%; cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239CA3AF' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+  .form-select:focus { border-color: var(--accent); }
+  .modal-source-header { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+  .modal-source-logo { width: 40px; height: 40px; border-radius: 8px; background: var(--bg-muted); object-fit: contain; padding: 4px; }
+  .modal-source-name { font-size: 15px; font-weight: 600; }
+  .modal-source-type { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+  .last-news-box { background: var(--bg-subtle); border: 1px solid var(--border-light); border-radius: var(--radius-sm); padding: 12px; font-size: 13px; }
+  .last-news-box a { color: var(--blue); text-decoration: none; font-weight: 500; }
+  .last-news-box a:hover { text-decoration: underline; }
+  .last-news-date { font-size: 11px; color: var(--text-tertiary); margin-top: 4px; font-family: var(--font-mono); }
+  .modal-link { font-size: 13px; color: var(--blue); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+  .modal-link:hover { text-decoration: underline; }
+  .msg-success { background: var(--green-bg); color: var(--green-text); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .msg-error { background: var(--red-bg); color: var(--red-text); padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; }
+
   /* ═══ ANIMACIONES ═══ */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes modalIn { from { opacity: 0; transform: scale(0.96) translateY(8px); } to { opacity: 1; transform: scale(1) translateY(0); } }
 
   /* ═══ RESPONSIVE ═══ */
-  .mobile-menu-btn { display: none; }
-  .sidebar-overlay { display: none; }
-  @media (max-width: 1200px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -141,8 +159,9 @@ const html = `
     .mobile-menu-btn { display: flex; background: none; border: none; cursor: pointer; color: var(--text-primary); padding: 4px; }
     .content { padding: 16px; }
     .header { padding: 0 16px; }
-    .cards-grid { grid-template-columns: 1fr; }
-    .tabs { width: 100%; overflow-x: auto; }
+    .search-tabs-row { flex-direction: column; align-items: stretch; }
+    .search-bar { flex: none; }
+    .tabs { overflow-x: auto; }
   }
 </style>
 </head>
@@ -150,7 +169,7 @@ const html = `
 <div class="app">
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-  <!-- ═══ SIDEBAR (idéntico a /admin) ═══ -->
+  <!-- ═══ SIDEBAR ═══ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <a href="/admin" class="logo">
@@ -190,7 +209,6 @@ const html = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
         Radio
       </a>
-
       <div class="nav-divider"></div>
       <div class="nav-section-label">Sistema</div>
       <a class="nav-item" href="https://supabase.com/dashboard/project/txxygcdafjcuyvvzbbnx" target="_blank">
@@ -232,6 +250,10 @@ const html = `
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
           Actualizar
         </button>
+        <button class="btn btn-primary" onclick="openAddSourceModal()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Añadir fuente
+        </button>
       </div>
     </header>
 
@@ -262,28 +284,126 @@ const html = `
   </main>
 </div>
 
+<!-- ═══ MODAL AÑADIR FUENTE ═══ -->
+<div class="modal-overlay" id="modalAdd">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Añadir fuente</div>
+      <button class="modal-close" onclick="closeModal('modalAdd')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="msg-add"></div>
+      <div class="form-group">
+        <label class="form-label">Nombre comercial</label>
+        <input type="text" id="add-name" class="form-input" placeholder="Ej: El País">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select id="add-type" class="form-select" onchange="updateUrlLabel()">
+          <option value="prensa_digital">Prensa digital</option>
+          <option value="prensa_escrita">Prensa escrita</option>
+          <option value="television">Televisión</option>
+          <option value="radio">Radio</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Ámbito</label>
+        <select id="add-scope" class="form-select">
+          <option value="national">Nacional</option>
+          <option value="regional">Regional / Autonómico</option>
+          <option value="international">Internacional</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Idioma</label>
+        <select id="add-lang" class="form-select">
+          <option value="es">Español</option>
+          <option value="ca">Catalán</option>
+          <option value="en">Inglés</option>
+          <option value="fr">Francés</option>
+          <option value="ar">Árabe</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" id="add-url-label">URL RSS</label>
+        <input type="text" id="add-url" class="form-input" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Logo <span>(nombre del fichero, opcional)</span></label>
+        <input type="text" id="add-logo" class="form-input" placeholder="Ej: ps_elpais.png">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalAdd')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveNewSource()">Añadir fuente</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL CONFIGURAR FUENTE ═══ -->
+<div class="modal-overlay" id="modalConfig">
+  <div class="modal">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0;">
+        <img id="cfg-logo" src="" alt="" class="modal-source-logo" onerror="this.style.display='none'">
+        <div>
+          <div class="modal-source-name" id="cfg-name">—</div>
+          <div class="modal-source-type" id="cfg-type">—</div>
+        </div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalConfig')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div id="msg-config"></div>
+      <div class="form-group">
+        <label class="form-label" id="cfg-url-label">URL RSS / M3U8</label>
+        <input type="text" id="cfg-url" class="form-input" placeholder="https://...">
+      </div>
+      <div>
+        <a href="https://eu2.make.com/903093/scenarios?folderId=496683" target="_blank" class="modal-link">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Ver escenarios en Make →
+        </a>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Última noticia indexada</div>
+        <div class="last-news-box" id="cfg-last-news">Cargando...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modalConfig')">Cerrar</button>
+      <button class="btn btn-primary" onclick="saveConfig()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://txxygcdafjcuyvvzbbnx.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR4eHlnY2RhZmpjdXl2dnpiYm54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMTA1NjEsImV4cCI6MjA5MTU4NjU2MX0.JCeVp6a3bRKbSPkG_aoYvVwMIFTFn7-IFaXjaeZ0Ik0';
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Fallback hardcodeado por si scope/language_code no existen en la tabla
 const INTERNACIONAL_NAMES = ['Al Jazeera','CNN','France 24','BBC'];
 const AUTONOMICO_NAMES = ['TV3','8TV','RAC1','Catalunya Radio','CatalunyaPress','Nació Digital','Vilaweb','ARA','El Nacional','Tot Badalona','La Ciutat','El Mon','Puntauvui'];
+
 const LANG_FLAGS = {
-  ca: '<img src="/imgs/cat.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Catalán',
-  es: '<img src="/imgs/esp.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Español',
-  en: '<img src="/imgs/usa.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Inglés',
-  fr: '<img src="/imgs/fra.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Francés',
-  ar: '<img src="/imgs/aue.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Árabe',
+  ca: '<img src="/imgs/cat.png" style="width:12px;height:12px;border-radius:0;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px"> Catalán',
+  es: '<img src="/imgs/esp.png" style="width:12px;height:12px;border-radius:0;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px"> Español',
+  en: '<img src="/imgs/usa.png" style="width:12px;height:12px;border-radius:0;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px"> Inglés',
+  fr: '<img src="/imgs/fra.png" style="width:12px;height:12px;border-radius:0;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px"> Francés',
+  ar: '<img src="/imgs/aue.png" style="width:12px;height:12px;border-radius:0;object-fit:cover;flex-shrink:0;vertical-align:middle;margin-right:4px"> Árabe',
 };
 const LANG_FALLBACK = {
   'TV3':'ca','RAC1':'ca','Catalunya Radio':'ca','CatalunyaPress':'ca',
   'Nació Digital':'ca','Vilaweb':'ca','ARA':'ca','El Nacional':'ca',
   'El Mon':'ca','Puntauvui':'ca','La Ciutat':'ca','8TV':'ca',
-  'CNN':'en','BBC':'en','France 24':'fr','Al Jazeera':'en',
+  'CNN':'en','BBC':'en','France 24':'fr','Al Jazeera':'ar',
 };
+const TYPE_LABELS = { prensa_digital:'Prensa digital', prensa_escrita:'Prensa escrita', television:'Televisión', radio:'Radio' };
 const SCOPE_ORDER = ['international','regional','national'];
 const SCOPE_LABELS = { international:'Internacionales', regional:'Regionales / Autonómicos', national:'Estatales' };
 
@@ -291,6 +411,7 @@ let allSources = [];
 let currentTab = 'all';
 let searchQuery = '';
 let searchTimeout = null;
+let currentCfgId = null;
 
 function getScope(s) {
   if (s.scope) return s.scope;
@@ -298,7 +419,6 @@ function getScope(s) {
   if (AUTONOMICO_NAMES.some(n => s.name.toLowerCase().includes(n.toLowerCase()))) return 'regional';
   return 'national';
 }
-
 function getLang(s) {
   const code = s.language_code || LANG_FALLBACK[s.name] || 'es';
   return LANG_FLAGS[code] || LANG_FLAGS['es'];
@@ -307,10 +427,7 @@ function getLang(s) {
 async function loadSources() {
   document.getElementById('content-area').innerHTML = '<div class="spinner"></div>';
   try {
-    const { data, error } = await db
-      .from('sources')
-      .select('*')
-      .order('name');
+    const { data, error } = await db.from('sources').select('*').order('name');
     if (error) throw error;
     allSources = data || [];
     document.getElementById('subtitle').textContent = allSources.length + ' fuentes en total';
@@ -327,7 +444,6 @@ function setTab(tab, el) {
   el.classList.add('active');
   render();
 }
-
 function onSearch() {
   clearTimeout(searchTimeout);
   searchTimeout = setTimeout(() => {
@@ -340,23 +456,14 @@ function render() {
   let sources = allSources;
   if (currentTab !== 'all') sources = sources.filter(s => s.type === currentTab);
   if (searchQuery) sources = sources.filter(s => s.name.toLowerCase().includes(searchQuery));
-
   const groups = { international:[], regional:[], national:[] };
-  sources.forEach(s => {
-    const scope = getScope(s);
-    (groups[scope] || groups.national).push(s);
-  });
-
+  sources.forEach(s => { const sc = getScope(s); (groups[sc] || groups.national).push(s); });
   const total = sources.length;
-  document.getElementById('subtitle').textContent =
-    total + ' fuente' + (total !== 1 ? 's' : '') + (searchQuery || currentTab !== 'all' ? ' (filtradas)' : ' en total');
-
+  document.getElementById('subtitle').textContent = total + ' fuente' + (total !== 1 ? 's' : '') + (searchQuery || currentTab !== 'all' ? ' (filtradas)' : ' en total');
   if (total === 0) {
-    document.getElementById('content-area').innerHTML =
-      '<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados</p><small>Prueba con otros filtros</small></div>';
+    document.getElementById('content-area').innerHTML = '<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados</p><small>Prueba con otros filtros</small></div>';
     return;
   }
-
   let html = '';
   let delay = 0;
   SCOPE_ORDER.forEach(key => {
@@ -367,36 +474,115 @@ function render() {
       const lang = getLang(s);
       const hasIcon = !!s.icon_url;
       const logoHtml = hasIcon
-        ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display=\`none\`;this.nextElementSibling.style.display=\`flex\`">'
-          + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
+        ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display=\`none\`;this.nextElementSibling.style.display=\`flex\`"><div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
         : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>';
-      const isMediaStream = s.type === 'television' || s.type === 'radio';
-      const badge = isMediaStream
-        ? '<div class="badges-group"><span class="badge-stream">Stream OK</span><span class="badge-text">Text OK</span></div>'
-        : (hasIcon ? '<span class="badge-ok">RSS OK</span>' : '<span class="badge-none">Sin configurar</span>');
+      const isMedia = s.type === 'television' || s.type === 'radio';
+      const badge = isMedia
+        ? '<div class="badges-group"><span style="display:inline-flex;align-items:center;gap:5px;background:#F5F5F5;color:#444;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0;"></span>Stream OK</span><span style="display:inline-flex;align-items:center;gap:5px;background:#F5F5F5;color:#444;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0;"></span>Text OK</span></div>'
+        : (hasIcon ? '<span style="display:inline-flex;align-items:center;gap:5px;background:#F5F5F5;color:#444;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10B981;flex-shrink:0;"></span>RSS OK</span>' : '<span style="display:inline-flex;align-items:center;gap:5px;background:#F5F5F5;color:#999;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px;">Sin configurar</span>');
       html += '<div class="source-card" style="animation-delay:' + delay + 'ms">'
         + '<div class="card-top">' + logoHtml
         + '<div class="card-info"><div class="card-name">' + escHtml(s.name) + '</div>'
         + '<div class="card-lang">' + lang + '</div></div></div>'
         + '<div class="card-bottom">' + badge
-        + \`<button class="btn-config" onclick="configurar(\\\`\${s.id}\\\`,\\\`\${escHtml(s.name)}\\\`)">Configurar</button>\`
+        + '<button class="btn-config" onclick="openConfigModal(' + JSON.stringify(s) + ')">Configurar</button>'
         + '</div></div>';
       delay = (delay + 30) % 300;
     });
     html += '</div></div>';
   });
-
   document.getElementById('content-area').innerHTML = html;
 }
 
-function configurar(id, name) {
-  alert('Configurar fuente: ' + name + '\\nID: ' + id + '\\n(Próximamente: formulario de configuración)');
+/* ═══ MODAL AÑADIR ═══ */
+function openAddSourceModal() {
+  document.getElementById('add-name').value = '';
+  document.getElementById('add-type').value = 'prensa_digital';
+  document.getElementById('add-scope').value = 'national';
+  document.getElementById('add-lang').value = 'es';
+  document.getElementById('add-url').value = '';
+  document.getElementById('add-logo').value = '';
+  document.getElementById('msg-add').innerHTML = '';
+  updateUrlLabel();
+  openModal('modalAdd');
+}
+function updateUrlLabel() {
+  const t = document.getElementById('add-type').value;
+  document.getElementById('add-url-label').textContent = (t === 'television' || t === 'radio') ? 'URL M3U8' : 'URL RSS';
+}
+async function saveNewSource() {
+  const name = document.getElementById('add-name').value.trim();
+  const type = document.getElementById('add-type').value;
+  const scope = document.getElementById('add-scope').value;
+  const language_code = document.getElementById('add-lang').value;
+  const website = document.getElementById('add-url').value.trim();
+  const icon_url = document.getElementById('add-logo').value.trim() ? '/logos/' + document.getElementById('add-logo').value.trim() : '';
+  if (!name) { showMsg('msg-add', 'error', 'El nombre es obligatorio.'); return; }
+  try {
+    const { error } = await db.from('sources').insert({ name, type, scope, language_code, website, icon_url });
+    if (error) throw error;
+    showMsg('msg-add', 'success', 'Fuente añadida correctamente.');
+    setTimeout(() => { closeModal('modalAdd'); loadSources(); }, 1200);
+  } catch(e) { showMsg('msg-add', 'error', e.message); }
 }
 
+/* ═══ MODAL CONFIGURAR ═══ */
+function openConfigModal(s) {
+  currentCfgId = s.id;
+  document.getElementById('cfg-name').textContent = s.name;
+  document.getElementById('cfg-type').textContent = TYPE_LABELS[s.type] || s.type;
+  document.getElementById('cfg-logo').src = s.icon_url || '';
+  document.getElementById('cfg-url').value = s.website || '';
+  const isMedia = s.type === 'television' || s.type === 'radio';
+  document.getElementById('cfg-url-label').textContent = isMedia ? 'URL M3U8' : 'URL RSS';
+  document.getElementById('msg-config').innerHTML = '';
+  document.getElementById('cfg-last-news').innerHTML = 'Cargando...';
+  openModal('modalConfig');
+  loadLastNews(s.id);
+}
+async function loadLastNews(sourceId) {
+  try {
+    const { data, error } = await db
+      .from('news')
+      .select('title, url, published_at')
+      .eq('source_id', sourceId)
+      .order('published_at', { ascending: false })
+      .limit(1);
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      document.getElementById('cfg-last-news').innerHTML = '<span style="color:var(--text-tertiary)">Sin noticias indexadas aún.</span>';
+      return;
+    }
+    const n = data[0];
+    const date = n.published_at ? new Date(n.published_at).toLocaleDateString('es', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '—';
+    document.getElementById('cfg-last-news').innerHTML =
+      (n.url ? '<a href="' + escHtml(n.url) + '" target="_blank">' + escHtml(n.title) + '</a>' : escHtml(n.title))
+      + '<div class="last-news-date">' + date + '</div>';
+  } catch(e) {
+    document.getElementById('cfg-last-news').innerHTML = '<span style="color:var(--red-text)">Error: ' + escHtml(e.message) + '</span>';
+  }
+}
+async function saveConfig() {
+  const website = document.getElementById('cfg-url').value.trim();
+  try {
+    const { error } = await db.from('sources').update({ website }).eq('id', currentCfgId);
+    if (error) throw error;
+    showMsg('msg-config', 'success', 'Guardado correctamente.');
+    const src = allSources.find(s => s.id === currentCfgId);
+    if (src) src.website = website;
+    setTimeout(() => document.getElementById('msg-config').innerHTML = '', 2000);
+  } catch(e) { showMsg('msg-config', 'error', e.message); }
+}
+
+/* ═══ UTILS ═══ */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showMsg(elId, type, text) {
+  document.getElementById(elId).innerHTML = '<div class="' + (type === 'success' ? 'msg-success' : 'msg-error') + '">' + escHtml(text) + '</div>';
+}
 function escHtml(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-
 function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('sidebarOverlay').classList.toggle('open');
