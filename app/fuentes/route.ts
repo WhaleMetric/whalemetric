@@ -18,6 +18,8 @@ const html = `
     --text-primary: #0A0A0A; --text-secondary: #6B7280; --text-tertiary: #9CA3AF;
     --accent: #0A0A0A; --accent-hover: #171717;
     --green: #10B981; --green-bg: #ECFDF5; --green-text: #065F46;
+    --red: #EF4444; --red-bg: #FEF2F2; --red-text: #991B1B;
+    --amber: #F59E0B; --amber-bg: #FFFBEB; --amber-text: #92400E;
     --blue: #3B82F6; --blue-bg: #EFF6FF; --blue-text: #1E40AF;
     --purple: #8B5CF6; --purple-bg: #F5F3FF; --purple-text: #5B21B6;
     --sidebar-w: 260px; --header-h: 56px;
@@ -25,18 +27,22 @@ const html = `
     --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
     --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
   }
   body { font-family: var(--font); background: var(--bg-subtle); color: var(--text-primary); -webkit-font-smoothing: antialiased; font-size: 14px; line-height: 1.5; }
   .app { display: flex; min-height: 100vh; }
 
-  /* SIDEBAR */
+  /* ═══ SIDEBAR ═══ */
   .sidebar { width: var(--sidebar-w); background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 40; transition: transform 300ms ease; }
   .sidebar-header { padding: 20px 20px 16px; border-bottom: 1px solid var(--border-light); }
   .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text-primary); }
   .logo-icon { width: 28px; height: 28px; background: var(--accent); border-radius: 7px; display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 700; letter-spacing: -0.5px; }
   .logo-text { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
   .logo-text span { color: var(--text-tertiary); font-weight: 400; font-size: 12px; margin-left: 4px; }
-  .admin-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--purple-bg); color: var(--purple-text); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; margin: 8px 16px 0; }
+  .sidebar-btn { margin: 12px 16px 0; padding: 9px 14px; background: var(--accent); color: white; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 150ms ease; justify-content: center; text-decoration: none; }
+  .sidebar-btn:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+  .sidebar-btn-secondary { margin: 8px 16px 0; padding: 9px 14px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-weight: 500; font-family: var(--font); cursor: pointer; display: flex; align-items: center; gap: 7px; transition: all 150ms ease; justify-content: center; }
+  .sidebar-btn-secondary:hover { background: var(--bg-subtle); color: var(--text-primary); }
   .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
   .nav-section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-tertiary); font-weight: 500; padding: 8px 20px 6px; }
   .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; color: var(--text-secondary); text-decoration: none; font-size: 13px; font-weight: 450; transition: all 150ms ease; cursor: pointer; border-left: 2px solid transparent; margin: 1px 0; }
@@ -44,18 +50,18 @@ const html = `
   .nav-item.active { color: var(--text-primary); background: var(--bg-subtle); border-left-color: var(--accent); font-weight: 550; }
   .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; opacity: 0.55; }
   .nav-item.active svg { opacity: 0.85; }
+  .nav-badge { margin-left: auto; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--blue-bg); color: var(--blue-text); }
   .nav-divider { height: 1px; background: var(--border-light); margin: 8px 16px; }
+  .admin-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; background: var(--purple-bg); color: var(--purple-text); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: 0.3px; margin: 8px 16px 0; }
   .sidebar-footer { padding: 14px 16px; border-top: 1px solid var(--border-light); }
   .user-block { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius); cursor: pointer; transition: background 150ms ease; }
   .user-block:hover { background: var(--bg-subtle); }
   .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: white; flex-shrink: 0; }
   .user-info { flex: 1; min-width: 0; }
-  .user-name { font-size: 13px; font-weight: 550; color: var(--text-primary); }
+  .user-name { font-size: 13px; font-weight: 550; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .user-role { font-size: 11px; color: var(--purple-text); font-weight: 500; }
-  .sidebar-overlay { display: none; }
-  .mobile-menu-btn { display: none; }
 
-  /* MAIN */
+  /* ═══ MAIN ═══ */
   .main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
   .header { height: var(--header-h); border-bottom: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; justify-content: space-between; padding: 0 28px; position: sticky; top: 0; z-index: 30; }
   .header-left { display: flex; align-items: center; gap: 16px; }
@@ -66,32 +72,29 @@ const html = `
   .btn-secondary { background: var(--bg); color: var(--text-secondary); border-color: var(--border); }
   .btn-secondary:hover { background: var(--bg-subtle); color: var(--text-primary); }
   .btn svg { width: 14px; height: 14px; }
-
-  /* CONTENT */
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .content { flex: 1; padding: 28px; }
   .page-header { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
   .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
   .page-subtitle { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
 
-  /* SEARCH */
+  /* ═══ SEARCH ═══ */
   .search-bar { position: relative; margin-bottom: 20px; }
   .search-bar svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-tertiary); pointer-events: none; }
   .search-bar input { width: 100%; height: 44px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; }
   .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,10,10,0.06); }
   .search-bar input::placeholder { color: var(--text-tertiary); }
 
-  /* TABS */
+  /* ═══ TABS ═══ */
   .tabs { display: flex; gap: 2px; background: var(--bg-muted); border-radius: var(--radius); padding: 3px; margin-bottom: 24px; width: fit-content; }
   .tab { padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all 150ms ease; white-space: nowrap; }
   .tab:hover { color: var(--text-primary); }
   .tab.active { background: var(--bg); color: var(--text-primary); box-shadow: var(--shadow-xs); font-weight: 600; }
 
-  /* GROUPS */
+  /* ═══ GROUPS & CARDS ═══ */
   .group { margin-bottom: 32px; }
   .group-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-tertiary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
   .group-count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--bg-muted); color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
-
-  /* CARDS */
   .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .source-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow 150ms ease; animation: fadeIn 300ms ease both; }
   .source-card:hover { box-shadow: var(--shadow-sm); }
@@ -108,14 +111,20 @@ const html = `
   .btn-config { padding: 5px 10px; font-size: 12px; border-radius: 5px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-weight: 500; transition: all 150ms ease; }
   .btn-config:hover { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--text-secondary); }
 
-  /* MISC */
-  .empty-state { text-align: center; padding: 48px 20px; color: var(--text-tertiary); }
-  .empty-state svg { width: 32px; height: 32px; margin: 0 auto 12px; display: block; opacity: 0.3; }
+  /* ═══ ESTADOS ═══ */
+  .state-box { padding: 60px 20px; text-align: center; color: var(--text-tertiary); }
+  .state-box svg { width: 36px; height: 36px; margin: 0 auto 12px; opacity: 0.3; display: block; }
+  .state-box p { font-size: 14px; }
+  .state-box small { font-size: 12px; margin-top: 4px; display: block; }
   .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin: 40px auto; }
 
+  /* ═══ ANIMACIONES ═══ */
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* ═══ RESPONSIVE ═══ */
+  .mobile-menu-btn { display: none; }
+  .sidebar-overlay { display: none; }
   @media (max-width: 1200px) { .cards-grid { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
@@ -135,27 +144,53 @@ const html = `
 <div class="app">
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
+  <!-- ═══ SIDEBAR (idéntico a /admin) ═══ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <a href="/admin" class="logo">
+      <a href="#" class="logo">
         <div class="logo-icon">W</div>
         <div class="logo-text">WhaleMetric <span>admin</span></div>
       </a>
     </div>
+
     <div class="admin-badge">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Acceso total
     </div>
+
+    <a href="/fuentes" class="sidebar-btn" style="text-decoration:none">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07"/></svg>
+      Gestionar fuentes
+    </a>
+
+    <button class="sidebar-btn-secondary" onclick="alert('Próximamente')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      Ver Transcripciones
+    </button>
+
     <nav class="sidebar-nav">
-      <div class="nav-section-label">Navegación</div>
+      <div class="nav-section-label">Vistas</div>
       <a class="nav-item" href="/admin">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
-        Dashboard noticias
+        Todas las noticias
       </a>
-      <a class="nav-item active" href="/fuentes">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07"/></svg>
-        Gestionar fuentes
+      <a class="nav-item" href="/admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/></svg>
+        Prensa digital
       </a>
+      <a class="nav-item" href="/admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
+        Prensa escrita
+      </a>
+      <a class="nav-item" href="/admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+        Televisión
+      </a>
+      <a class="nav-item" href="/admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        Radio
+      </a>
+
       <div class="nav-divider"></div>
       <div class="nav-section-label">Sistema</div>
       <a class="nav-item" href="https://supabase.com/dashboard/project/txxygcdafjcuyvvzbbnx" target="_blank">
@@ -167,6 +202,7 @@ const html = `
         Make · Escenario RSS
       </a>
     </nav>
+
     <div class="sidebar-footer">
       <div class="user-block">
         <div class="user-avatar">A</div>
@@ -178,6 +214,7 @@ const html = `
     </div>
   </aside>
 
+  <!-- ═══ MAIN ═══ -->
   <main class="main">
     <header class="header">
       <div class="header-left">
@@ -230,21 +267,42 @@ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Fallback hardcodeado por si scope/language_code no existen en la tabla
+const INTERNACIONAL_NAMES = ['Al Jazeera','CNN','France 24','BBC'];
+const AUTONOMICO_NAMES = ['TV3','8TV','RAC1','Catalunya Radio','CatalunyaPress','Nació Digital','Vilaweb','ARA','El Nacional','Tot Badalona','La Ciutat','El Mon','Puntauvui'];
 const LANG_FLAGS = { ca: 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', es: 'Español 🇪🇸', en: 'Inglés 🇬🇧', fr: 'Francés 🇫🇷' };
-const SCOPE_LABELS = { international: 'Internacionales', regional: 'Regionales', national: 'Estatales' };
-const SCOPE_ORDER = ['international', 'regional', 'national'];
+const LANG_FALLBACK = {
+  'TV3':'ca','RAC1':'ca','Catalunya Radio':'ca','CatalunyaPress':'ca',
+  'Nació Digital':'ca','Vilaweb':'ca','ARA':'ca','El Nacional':'ca',
+  'El Mon':'ca','Puntauvui':'ca','La Ciutat':'ca','8TV':'ca',
+  'CNN':'en','BBC':'en','France 24':'fr','Al Jazeera':'en',
+};
+const SCOPE_ORDER = ['international','regional','national'];
+const SCOPE_LABELS = { international:'Internacionales', regional:'Regionales / Autonómicos', national:'Estatales' };
 
 let allSources = [];
 let currentTab = 'all';
 let searchQuery = '';
 let searchTimeout = null;
 
+function getScope(s) {
+  if (s.scope) return s.scope;
+  if (INTERNACIONAL_NAMES.some(n => s.name.toLowerCase().includes(n.toLowerCase()))) return 'international';
+  if (AUTONOMICO_NAMES.some(n => s.name.toLowerCase().includes(n.toLowerCase()))) return 'regional';
+  return 'national';
+}
+
+function getLang(s) {
+  const code = s.language_code || LANG_FALLBACK[s.name] || 'es';
+  return LANG_FLAGS[code] || 'Español 🇪🇸';
+}
+
 async function loadSources() {
   document.getElementById('content-area').innerHTML = '<div class="spinner"></div>';
   try {
     const { data, error } = await db
       .from('sources')
-      .select('id, name, type, scope, country_code, language_code, icon_url, website')
+      .select('*')
       .order('name');
     if (error) throw error;
     allSources = data || [];
@@ -252,7 +310,7 @@ async function loadSources() {
     render();
   } catch(e) {
     document.getElementById('content-area').innerHTML =
-      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Error: ' + escHtml(e.message) + '</p></div>';
+      '<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>Error al cargar</p><small>' + escHtml(e.message) + '</small></div>';
   }
 }
 
@@ -276,13 +334,10 @@ function render() {
   if (currentTab !== 'all') sources = sources.filter(s => s.type === currentTab);
   if (searchQuery) sources = sources.filter(s => s.name.toLowerCase().includes(searchQuery));
 
-  const groups = {};
-  SCOPE_ORDER.forEach(k => groups[k] = []);
-
+  const groups = { international:[], regional:[], national:[] };
   sources.forEach(s => {
-    const scope = s.scope || 'national';
-    if (groups[scope]) groups[scope].push(s);
-    else groups['national'].push(s);
+    const scope = getScope(s);
+    (groups[scope] || groups.national).push(s);
   });
 
   const total = sources.length;
@@ -291,7 +346,7 @@ function render() {
 
   if (total === 0) {
     document.getElementById('content-area').innerHTML =
-      '<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados</p></div>';
+      '<div class="state-box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><p>Sin resultados</p><small>Prueba con otros filtros</small></div>';
     return;
   }
 
@@ -300,25 +355,21 @@ function render() {
   SCOPE_ORDER.forEach(key => {
     const items = groups[key];
     if (!items.length) return;
-    html += '<div class="group">';
-    html += '<div class="group-header">' + SCOPE_LABELS[key] + ' <span class="group-count">' + items.length + '</span></div>';
-    html += '<div class="cards-grid">';
+    html += '<div class="group"><div class="group-header">' + SCOPE_LABELS[key] + ' <span class="group-count">' + items.length + '</span></div><div class="cards-grid">';
     items.forEach(s => {
-      const lang = LANG_FLAGS[s.language_code] || 'Español 🇪🇸';
+      const lang = getLang(s);
       const hasIcon = !!s.icon_url;
       const logoHtml = hasIcon
         ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">'
-          + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0)) + '</div>'
-        : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0)) + '</div>';
-      const badge = hasIcon
-        ? '<span class="badge-ok">RSS OK</span>'
-        : '<span class="badge-none">Sin configurar</span>';
+          + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
+        : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>';
+      const badge = hasIcon ? '<span class="badge-ok">RSS OK</span>' : '<span class="badge-none">Sin configurar</span>';
       html += '<div class="source-card" style="animation-delay:' + delay + 'ms">'
         + '<div class="card-top">' + logoHtml
         + '<div class="card-info"><div class="card-name">' + escHtml(s.name) + '</div>'
         + '<div class="card-lang">' + lang + '</div></div></div>'
         + '<div class="card-bottom">' + badge
-        + '<button class="btn-config" onclick="configurar('' + escHtml(s.name) + '')">Configurar</button>'
+        + '<button class="btn-config" onclick="configurar('' + s.id + '','' + escHtml(s.name) + '')">Configurar</button>'
         + '</div></div>';
       delay = (delay + 30) % 300;
     });
@@ -328,8 +379,8 @@ function render() {
   document.getElementById('content-area').innerHTML = html;
 }
 
-function configurar(name) {
-  alert('Configurar fuente: ' + name + '\\n(Próximamente: formulario de configuración)');
+function configurar(id, name) {
+  alert('Configurar fuente: ' + name + '\\nID: ' + id + '\\n(Próximamente: formulario de configuración)');
 }
 
 function escHtml(s) {
