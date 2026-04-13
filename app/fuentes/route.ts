@@ -360,7 +360,7 @@ function render() {
       const lang = getLang(s);
       const hasIcon = !!s.icon_url;
       const logoHtml = hasIcon
-        ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">'
+        ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display=\`none\`;this.nextElementSibling.style.display=\`flex\`">'
           + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
         : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>';
       const badge = hasIcon ? '<span class="badge-ok">RSS OK</span>' : '<span class="badge-none">Sin configurar</span>';
