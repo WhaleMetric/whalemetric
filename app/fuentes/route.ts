@@ -369,7 +369,7 @@ function render() {
         + '<div class="card-info"><div class="card-name">' + escHtml(s.name) + '</div>'
         + '<div class="card-lang">' + lang + '</div></div></div>'
         + '<div class="card-bottom">' + badge
-        + '<button class="btn-config" onclick="configurar('' + s.id + '','' + escHtml(s.name) + '')">Configurar</button>'
+        + \`<button class="btn-config" onclick="configurar(\\\`\${s.id}\\\`,\\\`\${escHtml(s.name)}\\\`)">Configurar</button>\`
         + '</div></div>';
       delay = (delay + 30) % 300;
     });
