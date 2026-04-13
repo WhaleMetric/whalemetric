@@ -232,7 +232,7 @@ const html = `
 
     <button class="sidebar-btn" onclick="openAddSource()">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Añadir Fuente
+      Gestionar fuentes
     </button>
 
     <button class="sidebar-btn-secondary" onclick="openTranscriptions()">
@@ -400,7 +400,7 @@ const html = `
             <thead>
               <tr>
                 <th>Fuente</th>
-                <th onclick="setSort('title')" id="th-title">Titular <span class="sort-icon" id="si-title">↕</span></th>
+                <th>Titular y descripción</th>
                 <th>Tipo</th>
                 <th onclick="setSort('published_at')" id="th-published_at">Fecha <span class="sort-icon active" id="si-published_at">↓</span></th>
                 <th>Enlace</th>
@@ -465,6 +465,7 @@ async function loadData() {
     const { data, error } = await db
       .from('news')
       .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
+      .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
       .order('published_at', { ascending: false });
 
     if (error) throw error;
@@ -577,13 +578,14 @@ function renderTable() {
         <td>
           <div style="display:flex;align-items:center;gap:8px;">
             <img src="\${n.source_icon || ''}" alt="\${escHtml(n.source_name)}"
-              style="width:32px;height:32px;object-fit:contain;border-radius:4px;background:#f5f5f5;padding:2px;"
+              style="width:28px;height:28px;object-fit:contain;border-radius:6px;background:#f5f5f5;padding:2px;"
               onerror="this.style.display='none'">
             <span style="font-size:12px;font-weight:500;color:var(--text-primary)">\${escHtml(n.source_name)}</span>
           </div>
         </td>
-        <td style="max-width:480px;white-space:normal;line-height:1.4;font-weight:500;color:var(--text-primary)">
-          \${escHtml(n.title)}
+        <td style="max-width:480px;white-space:normal;line-height:1.5">
+          <div style="font-weight:600;color:var(--text-primary);margin-bottom:4px">\${escHtml(n.title)}</div>
+          <div style="font-size:12px;color:var(--text-secondary);line-height:1.4">\${escHtml(truncate(n.description || '', 150))}</div>
         </td>
         <td><span class="type-badge type-\${n.source_type}">\${TYPE_LABELS[n.source_type] || n.source_type}</span></td>
         <td class="date-cell">\${date}</td>
