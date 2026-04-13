@@ -219,15 +219,9 @@ const html = `
   <!-- ═══ SIDEBAR ═══ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <a href="#" class="logo">
-        <div class="logo-icon">W</div>
-        <div class="logo-text">WhaleMetric <span>admin</span></div>
+      <a href="/admin" class="logo">
+        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:28px;width:auto;display:block;">
       </a>
-    </div>
-
-    <div class="admin-badge">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Acceso total
     </div>
 
     <a href="/fuentes" class="sidebar-btn" style="text-decoration:none">

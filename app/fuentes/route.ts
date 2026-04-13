@@ -78,15 +78,16 @@ const html = `
   .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
   .page-subtitle { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
 
-  /* ═══ SEARCH ═══ */
-  .search-bar { position: relative; margin-bottom: 20px; }
+  /* ═══ SEARCH + TABS ROW ═══ */
+  .search-tabs-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+  .search-bar { position: relative; flex: 0 0 220px; }
   .search-bar svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-tertiary); pointer-events: none; }
-  .search-bar input { width: 100%; height: 44px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; }
+  .search-bar input { width: 100%; height: 38px; padding: 0 14px 0 42px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; font-family: var(--font); color: var(--text-primary); background: var(--bg); outline: none; transition: border-color 150ms ease; }
   .search-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(10,10,10,0.06); }
   .search-bar input::placeholder { color: var(--text-tertiary); }
 
   /* ═══ TABS ═══ */
-  .tabs { display: flex; gap: 2px; background: var(--bg-muted); border-radius: var(--radius); padding: 3px; margin-bottom: 24px; width: fit-content; }
+  .tabs { display: flex; gap: 2px; background: var(--bg-muted); border-radius: var(--radius); padding: 3px; flex: 1; width: auto; }
   .tab { padding: 6px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border: none; background: transparent; font-family: var(--font); transition: all 150ms ease; white-space: nowrap; }
   .tab:hover { color: var(--text-primary); }
   .tab.active { background: var(--bg); color: var(--text-primary); box-shadow: var(--shadow-xs); font-weight: 600; }
@@ -95,7 +96,7 @@ const html = `
   .group { margin-bottom: 32px; }
   .group-header { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-tertiary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; gap: 8px; }
   .group-count { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; background: var(--bg-muted); color: var(--text-secondary); text-transform: none; letter-spacing: 0; }
-  .cards-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
   .source-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; transition: box-shadow 150ms ease; animation: fadeIn 300ms ease both; }
   .source-card:hover { box-shadow: var(--shadow-sm); }
   .card-top { display: flex; align-items: center; gap: 12px; }
@@ -108,6 +109,11 @@ const html = `
   .badge-ok { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--green-bg); color: var(--green-text); }
   .badge-ok::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
   .badge-none { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 4px; background: var(--bg-muted); color: var(--text-tertiary); }
+  .badge-stream { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--purple-bg); color: var(--purple-text); }
+  .badge-stream::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--purple); }
+  .badge-text { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 4px; background: var(--blue-bg); color: var(--blue-text); }
+  .badge-text::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--blue); }
+  .badges-group { display: flex; gap: 4px; flex-wrap: wrap; }
   .btn-config { padding: 5px 10px; font-size: 12px; border-radius: 5px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border); cursor: pointer; font-family: var(--font); font-weight: 500; transition: all 150ms ease; }
   .btn-config:hover { background: var(--bg-subtle); color: var(--text-primary); border-color: var(--text-secondary); }
 
@@ -147,15 +153,9 @@ const html = `
   <!-- ═══ SIDEBAR (idéntico a /admin) ═══ -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <a href="#" class="logo">
-        <div class="logo-icon">W</div>
-        <div class="logo-text">WhaleMetric <span>admin</span></div>
+      <a href="/admin" class="logo">
+        <img src="/imgs/LogoLargoWhaleMetric.png" alt="WhaleMetric" style="height:28px;width:auto;display:block;">
       </a>
-    </div>
-
-    <div class="admin-badge">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-      Acceso total
     </div>
 
     <a href="/fuentes" class="sidebar-btn" style="text-decoration:none">
@@ -243,17 +243,18 @@ const html = `
         </div>
       </div>
 
-      <div class="search-bar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="search-input" placeholder="Buscar fuente..." oninput="onSearch()">
-      </div>
-
-      <div class="tabs">
-        <button class="tab active" onclick="setTab('all', this)">Todas</button>
-        <button class="tab" onclick="setTab('prensa_digital', this)">Prensa digital</button>
-        <button class="tab" onclick="setTab('prensa_escrita', this)">Prensa escrita</button>
-        <button class="tab" onclick="setTab('television', this)">Televisión</button>
-        <button class="tab" onclick="setTab('radio', this)">Radio</button>
+      <div class="search-tabs-row">
+        <div class="search-bar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Buscar fuente..." oninput="onSearch()">
+        </div>
+        <div class="tabs">
+          <button class="tab active" onclick="setTab('all', this)">Todas</button>
+          <button class="tab" onclick="setTab('prensa_digital', this)">Prensa digital</button>
+          <button class="tab" onclick="setTab('prensa_escrita', this)">Prensa escrita</button>
+          <button class="tab" onclick="setTab('television', this)">Televisión</button>
+          <button class="tab" onclick="setTab('radio', this)">Radio</button>
+        </div>
       </div>
 
       <div id="content-area"><div class="spinner"></div></div>
@@ -270,7 +271,13 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Fallback hardcodeado por si scope/language_code no existen en la tabla
 const INTERNACIONAL_NAMES = ['Al Jazeera','CNN','France 24','BBC'];
 const AUTONOMICO_NAMES = ['TV3','8TV','RAC1','Catalunya Radio','CatalunyaPress','Nació Digital','Vilaweb','ARA','El Nacional','Tot Badalona','La Ciutat','El Mon','Puntauvui'];
-const LANG_FLAGS = { ca: 'Catalán 🏴󠁥󠁳󠁣󠁴󠁿', es: 'Español 🇪🇸', en: 'Inglés 🇬🇧', fr: 'Francés 🇫🇷' };
+const LANG_FLAGS = {
+  ca: '<img src="/imgs/cat.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Catalán',
+  es: '<img src="/imgs/esp.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Español',
+  en: '<img src="/imgs/usa.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Inglés',
+  fr: '<img src="/imgs/fra.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Francés',
+  ar: '<img src="/imgs/aue.png" style="width:16px;height:11px;border-radius:2px;object-fit:cover;vertical-align:middle;margin-right:4px"> Árabe',
+};
 const LANG_FALLBACK = {
   'TV3':'ca','RAC1':'ca','Catalunya Radio':'ca','CatalunyaPress':'ca',
   'Nació Digital':'ca','Vilaweb':'ca','ARA':'ca','El Nacional':'ca',
@@ -294,7 +301,7 @@ function getScope(s) {
 
 function getLang(s) {
   const code = s.language_code || LANG_FALLBACK[s.name] || 'es';
-  return LANG_FLAGS[code] || 'Español 🇪🇸';
+  return LANG_FLAGS[code] || LANG_FLAGS['es'];
 }
 
 async function loadSources() {
@@ -363,7 +370,10 @@ function render() {
         ? '<img class="card-logo" src="' + escHtml(s.icon_url) + '" alt="' + escHtml(s.name) + '" onerror="this.style.display=\`none\`;this.nextElementSibling.style.display=\`flex\`">'
           + '<div class="card-logo-placeholder" style="display:none">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>'
         : '<div class="card-logo-placeholder">' + escHtml(s.name.charAt(0).toUpperCase()) + '</div>';
-      const badge = hasIcon ? '<span class="badge-ok">RSS OK</span>' : '<span class="badge-none">Sin configurar</span>';
+      const isMediaStream = s.type === 'television' || s.type === 'radio';
+      const badge = isMediaStream
+        ? '<div class="badges-group"><span class="badge-stream">Stream OK</span><span class="badge-text">Text OK</span></div>'
+        : (hasIcon ? '<span class="badge-ok">RSS OK</span>' : '<span class="badge-none">Sin configurar</span>');
       html += '<div class="source-card" style="animation-delay:' + delay + 'ms">'
         + '<div class="card-top">' + logoHtml
         + '<div class="card-info"><div class="card-name">' + escHtml(s.name) + '</div>'
