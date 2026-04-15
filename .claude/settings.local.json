@@ -34,7 +34,11 @@
       "Bash(cp \"public/logos/tv_rt.png\" public/logos/)",
       "Bash(git config:*)",
       "Bash(git remote:*)",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "mcp__5aea28be-06f6-4330-b1ac-e632feb925c2__list_projects",
+      "mcp__5aea28be-06f6-4330-b1ac-e632feb925c2__list_tables",
+      "mcp__5aea28be-06f6-4330-b1ac-e632feb925c2__apply_migration",
+      "mcp__5aea28be-06f6-4330-b1ac-e632feb925c2__execute_sql"
     ]
   }
 }
