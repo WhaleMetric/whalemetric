@@ -78,8 +78,8 @@ const html = `<!DOCTYPE html>
   .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.4px; }
   .page-subtitle { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
 
-  /* ═══ KPIs ENRIQUECIDAS ═══ */
-  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+  /* ═══ KPIs — 3 cards ═══ */
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
   .kpi-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px 14px; transition: box-shadow 150ms ease; animation: fadeInUp 400ms ease both; }
   .kpi-card:hover { box-shadow: var(--shadow-sm); }
   .kpi-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -90,18 +90,17 @@ const html = `<!DOCTYPE html>
   .kpi-badge.down { background: var(--red-bg); color: var(--red-text); }
   .kpi-badge.neutral { background: var(--bg-muted); color: var(--text-tertiary); }
   .kpi-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; color: var(--text-primary); line-height: 1.1; font-family: var(--font-mono); margin-top: 2px; }
-  .kpi-spark-wrap { height: 52px; margin: 8px 0 6px; position: relative; }
-  .kpi-typebar { display: flex; height: 4px; border-radius: 2px; overflow: hidden; gap: 1px; }
-  .kpi-typebar-seg { height: 100%; transition: width 400ms ease; }
+  .kpi-spark-wrap { height: 52px; margin: 8px 0 8px; position: relative; }
+  .kpi-type-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .kpi-type-item { display: inline-flex; align-items: center; gap: 3px; color: var(--text-tertiary); }
+  .kpi-type-item svg { width: 12px; height: 12px; opacity: 0.6; flex-shrink: 0; }
+  .kpi-type-item span { font-size: 11px; font-family: var(--font-mono); font-weight: 500; }
   .kpi-card:nth-child(1) { animation-delay: 0ms; }
   .kpi-card:nth-child(2) { animation-delay: 50ms; }
   .kpi-card:nth-child(3) { animation-delay: 100ms; }
-  .kpi-card:nth-child(4) { animation-delay: 150ms; }
 
-  /* ═══ LAYOUT 60/40 ═══ */
-  .chart-top5-row { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 24px; }
-  .chart-col { flex: 0 0 60%; min-width: 0; }
-  .top5-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+  /* ═══ LAYOUT 3 COLUMNAS: 3fr 1fr 1fr ═══ */
+  .chart-top5-row { display: grid; grid-template-columns: 3fr 1fr 1fr; gap: 16px; align-items: start; margin-bottom: 24px; }
 
   /* ═══ CHARTS ═══ */
   .chart-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
@@ -126,11 +125,11 @@ const html = `<!DOCTYPE html>
 
   /* ═══ TOP 5 ═══ */
   .top5-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .top5-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; font-weight: 600; }
-  .top5-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--border-light); gap: 8px; }
+  .top5-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--border-light); font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top5-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-bottom: 1px solid var(--border-light); gap: 6px; }
   .top5-row:last-child { border-bottom: none; }
-  .top5-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
-  .top5-name { font-size: 13px; color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top5-left { display: flex; align-items: center; gap: 7px; min-width: 0; flex: 1; }
+  .top5-name { font-size: 12px; color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .top5-type-lbl { font-size: 10px; color: var(--text-tertiary); }
   .top5-count { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--text-primary); flex-shrink: 0; }
 
@@ -195,11 +194,10 @@ const html = `<!DOCTYPE html>
   .mobile-menu-btn { display: none; }
   .sidebar-overlay { display: none; }
   @media (max-width: 1200px) {
-    .chart-top5-row { flex-direction: column; }
-    .chart-col, .top5-col { flex: none; width: 100%; }
-    .top5-col { flex-direction: row; }
+    .chart-top5-row { grid-template-columns: 1fr 1fr; }
+    .chart-top5-row > .chart-col { grid-column: 1 / -1; }
   }
-  @media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } .type-cards { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 1024px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } .type-cards { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 768px) {
     .sidebar { transform: translateX(-100%); }
     .sidebar.open { transform: translateX(0); }
@@ -209,7 +207,8 @@ const html = `<!DOCTYPE html>
     .mobile-menu-btn { display: flex; background: none; border: none; cursor: pointer; color: var(--text-primary); padding: 4px; }
     .content { padding: 16px; }
     .header { padding: 0 16px; }
-    .top5-col { flex-direction: column; }
+    .kpi-grid { grid-template-columns: 1fr; }
+    .chart-top5-row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -313,7 +312,7 @@ const html = `<!DOCTYPE html>
     <div id="section-noticias" class="section active">
       <div class="content">
 
-        <!-- KPIs enriquecidas -->
+        <!-- 3 KPI cards -->
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-top">
@@ -325,7 +324,7 @@ const html = `<!DOCTYPE html>
             </div>
             <div class="kpi-value" id="kpi-hoy">—</div>
             <div class="kpi-spark-wrap"><canvas id="kpi-spark-hoy"></canvas></div>
-            <div class="kpi-typebar" id="kpi-typebar-hoy"></div>
+            <div class="kpi-type-row" id="kpi-types-hoy"></div>
           </div>
           <div class="kpi-card">
             <div class="kpi-top">
@@ -337,7 +336,7 @@ const html = `<!DOCTYPE html>
             </div>
             <div class="kpi-value" id="kpi-48h">—</div>
             <div class="kpi-spark-wrap"><canvas id="kpi-spark-48h"></canvas></div>
-            <div class="kpi-typebar" id="kpi-typebar-48h"></div>
+            <div class="kpi-type-row" id="kpi-types-48h"></div>
           </div>
           <div class="kpi-card">
             <div class="kpi-top">
@@ -349,38 +348,26 @@ const html = `<!DOCTYPE html>
             </div>
             <div class="kpi-value" id="kpi-semana">—</div>
             <div class="kpi-spark-wrap"><canvas id="kpi-spark-semana"></canvas></div>
-            <div class="kpi-typebar" id="kpi-typebar-semana"></div>
-          </div>
-          <div class="kpi-card">
-            <div class="kpi-top">
-              <div class="kpi-label">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                Fuentes activas
-              </div>
-              <span class="kpi-badge neutral" id="kpi-badge-sources" style="background:transparent;color:var(--text-tertiary);font-size:10px;padding:0">30d</span>
-            </div>
-            <div class="kpi-value" id="kpi-sources">—</div>
-            <div class="kpi-spark-wrap"><canvas id="kpi-spark-sources"></canvas></div>
-            <div class="kpi-typebar" id="kpi-typebar-sources"></div>
+            <div class="kpi-type-row" id="kpi-types-semana"></div>
           </div>
         </div>
 
-        <!-- Layout 60/40: gráfico izquierda + Top 5 derecha -->
+        <!-- Layout 3 columnas: gráfico 60% + top5 activos 20% + top5 inactivos 20% -->
         <div class="chart-top5-row">
 
-          <!-- 60% — Publicaciones por día -->
+          <!-- Gráfico Publicaciones por día -->
           <div class="chart-col">
             <div class="chart-card" style="margin-bottom:0">
               <div class="chart-head">
                 <div>
                   <div class="chart-title">Publicaciones por día</div>
-                  <div class="chart-sub" id="news-chart-sub">Cargando datos de daily_stats...</div>
+                  <div class="chart-sub" id="news-chart-sub">Cargando...</div>
                 </div>
                 <div class="period-tabs" id="news-period-tabs">
-                  <button class="period-btn active" onclick="loadNewsActivity(7,this)">7d</button>
-                  <button class="period-btn" onclick="loadNewsActivity(30,this)">30d</button>
-                  <button class="period-btn" onclick="loadNewsActivity(90,this)">3m</button>
-                  <button class="period-btn" onclick="loadNewsActivity(365,this)">1a</button>
+                  <button class="period-btn active" onclick="onPeriodChange(7,this)">7d</button>
+                  <button class="period-btn" onclick="onPeriodChange(30,this)">30d</button>
+                  <button class="period-btn" onclick="onPeriodChange(90,this)">3m</button>
+                  <button class="period-btn" onclick="onPeriodChange(365,this)">1a</button>
                 </div>
               </div>
               <div class="type-pills" id="news-type-pills">
@@ -406,16 +393,16 @@ const html = `<!DOCTYPE html>
             </div>
           </div>
 
-          <!-- 40% — Top 5 apilados -->
-          <div class="top5-col">
-            <div class="top5-card">
-              <div class="top5-head">Top 5 más activos (48h)</div>
-              <div id="top5-active"></div>
-            </div>
-            <div class="top5-card">
-              <div class="top5-head">Top 5 menos activos (48h)</div>
-              <div id="top5-inactive"></div>
-            </div>
+          <!-- Top 5 más activos -->
+          <div class="top5-card">
+            <div class="top5-head" id="top5-active-head">Top 5 más activos (7d)</div>
+            <div id="top5-active"><div style="padding:20px;text-align:center"><div class="spinner"></div></div></div>
+          </div>
+
+          <!-- Top 5 menos activos -->
+          <div class="top5-card">
+            <div class="top5-head" id="top5-inactive-head">Top 5 menos activos (7d)</div>
+            <div id="top5-inactive"><div style="padding:20px;text-align:center"><div class="spinner"></div></div></div>
           </div>
 
         </div>
@@ -496,7 +483,6 @@ const html = `<!DOCTYPE html>
           </div>
         </div>
 
-        <!-- Bloque A: Actividad diaria -->
         <div class="chart-card">
           <div class="chart-head">
             <div>
@@ -514,7 +500,6 @@ const html = `<!DOCTYPE html>
           <div class="chart-wrap" id="db-activity-wrap" style="display:none"><canvas id="chart-activity-db"></canvas></div>
         </div>
 
-        <!-- Bloque B: Almacenamiento acumulado -->
         <div class="chart-card">
           <div class="chart-head">
             <div>
@@ -556,6 +541,14 @@ let searchTimeout = null;
 const TYPE_LABELS = { prensa_digital: 'Prensa digital', prensa_escrita: 'Prensa escrita', television: 'Televisión', radio: 'Radio' };
 const SOURCE_COLORS = { prensa_digital: '#3B82F6', prensa_escrita: '#F59E0B', television: '#8B5CF6', radio: '#10B981' };
 const TYPE_KEYS = ['prensa_digital', 'prensa_escrita', 'television', 'radio'];
+
+// Iconos SVG para el breakdown de tipos en KPIs
+var TYPE_SVGS = {
+  prensa_digital: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/></svg>',
+  prensa_escrita: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 002-2V4a2 2 0 00-2-2H8a2 2 0 00-2 2v16a2 2 0 01-2 2zm0 0a2 2 0 01-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8V6z"/></svg>',
+  television: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><polyline points="17 2 12 7 7 2"/></svg>',
+  radio: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>',
+};
 
 /* ═══ GRADIENT HELPER ═══ */
 function areaGradient(r, g, b, a0, a1) {
@@ -625,34 +618,32 @@ async function loadData() {
     populateSourceFilter();
     applyFilters();
     renderKpiSparklines();
-    renderKpiTypeBars();
-    renderTop5();
+    renderKpiTypeBreakdowns();
     loadNewsActivity(newsActivityPeriod, null);
+    loadTop5(newsActivityPeriod, newsActiveTypes);
   } catch (e) { showError(e.message); }
 }
 
 /* ═══ KPIs ═══ */
 function updateKPIs(stats, kpis) {
   if (stats && typeof stats === 'object') {
-    document.getElementById('kpi-hoy').textContent     = stats.today          ?? '—';
-    document.getElementById('kpi-48h').textContent     = stats.last48h        ?? '—';
-    document.getElementById('kpi-semana').textContent  = stats.this_week      ?? '—';
-    document.getElementById('kpi-sources').textContent = stats.active_sources ?? '—';
+    document.getElementById('kpi-hoy').textContent    = stats.today          ?? '—';
+    document.getElementById('kpi-48h').textContent    = stats.last48h        ?? '—';
+    document.getElementById('kpi-semana').textContent = stats.this_week      ?? '—';
   } else {
     var all = state.allNews;
     var now = new Date();
     var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
     var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
     var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0);
-    document.getElementById('kpi-hoy').textContent     = all.filter(function(n) { return n.published_at >= todayStart; }).length;
-    document.getElementById('kpi-48h').textContent     = all.filter(function(n) { return n.published_at >= h48ago; }).length;
-    document.getElementById('kpi-semana').textContent  = all.filter(function(n) { return n.published_at >= mon.toISOString(); }).length;
-    document.getElementById('kpi-sources').textContent = new Set(all.map(function(n) { return n.source_name; })).size;
+    document.getElementById('kpi-hoy').textContent    = all.filter(function(n) { return n.published_at >= todayStart; }).length;
+    document.getElementById('kpi-48h').textContent    = all.filter(function(n) { return n.published_at >= h48ago; }).length;
+    document.getElementById('kpi-semana').textContent = all.filter(function(n) { return n.published_at >= mon.toISOString(); }).length;
   }
   if (kpis && typeof kpis === 'object') {
-    setBadge('kpi-badge-hoy', kpis.today, kpis.today_prev);
-    setBadge('kpi-badge-48h', kpis.h48, kpis.h48_prev);
-    setBadge('kpi-badge-semana', kpis.week, kpis.week_prev);
+    setBadge('kpi-badge-hoy',    kpis.today, kpis.today_prev);
+    setBadge('kpi-badge-48h',    kpis.h48,   kpis.h48_prev);
+    setBadge('kpi-badge-semana', kpis.week,  kpis.week_prev);
   }
 }
 
@@ -660,11 +651,16 @@ function setBadge(id, curr, prev) {
   var el = document.getElementById(id);
   if (!el) return;
   if (!prev || prev === 0) {
-    el.textContent = 'sin ref.';
+    el.textContent = 'vs sem. ant.';
     el.className = 'kpi-badge neutral';
     return;
   }
   var pct = Math.round((curr - prev) / prev * 100);
+  if (Math.abs(pct) > 500) {
+    el.textContent = 'vs sem. ant.';
+    el.className = 'kpi-badge neutral';
+    return;
+  }
   var up = pct >= 0;
   el.textContent = (up ? '↑ ' : '↓ ') + Math.abs(pct) + '%';
   el.className = 'kpi-badge ' + (up ? 'up' : 'down');
@@ -679,20 +675,14 @@ function updateBadges() {
   });
 }
 
-/* ═══ KPI SPARKLINES ═══ */
+/* ═══ KPI SPARKLINES — línea azul única, últimos 7 días ═══ */
 function renderKpiSparklines() {
   if (typeof Chart === 'undefined') return;
   var days7 = [];
   for (var i = 6; i >= 0; i--) {
-    var d = new Date();
-    d.setDate(d.getDate() - i);
+    var d = new Date(); d.setDate(d.getDate() - i);
     days7.push(d.toISOString().slice(0, 10));
   }
-  var now = new Date();
-  var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
-  var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0, 0, 0, 0);
-
-  // Daily counts last 7 days
   var dailyCounts = {};
   days7.forEach(function(d) { dailyCounts[d] = 0; });
   state.allNews.forEach(function(n) {
@@ -701,23 +691,7 @@ function renderKpiSparklines() {
   });
   var sparkData = days7.map(function(d) { return dailyCounts[d]; });
 
-  // Daily unique active sources last 7 days
-  var srcByDay = {};
-  days7.forEach(function(d) { srcByDay[d] = new Set(); });
-  state.allNews.forEach(function(n) {
-    var d = (n.published_at || '').slice(0, 10);
-    if (srcByDay[d]) srcByDay[d].add(n.source_name);
-  });
-  var srcSparkData = days7.map(function(d) { return srcByDay[d].size; });
-
-  var sparkConfigs = {
-    'hoy': sparkData,
-    '48h': sparkData,
-    'semana': sparkData,
-    'sources': srcSparkData,
-  };
-
-  Object.keys(sparkConfigs).forEach(function(key) {
+  ['hoy', '48h', 'semana'].forEach(function(key) {
     var canvas = document.getElementById('kpi-spark-' + key);
     if (!canvas) return;
     if (sparklineCharts[key]) { sparklineCharts[key].destroy(); }
@@ -726,7 +700,7 @@ function renderKpiSparklines() {
       data: {
         labels: days7,
         datasets: [{
-          data: sparkConfigs[key],
+          data: sparkData,
           borderColor: '#3B82F6',
           backgroundColor: areaGradient(59, 130, 246, 0.2, 0),
           fill: true, borderWidth: 1.5, tension: 0.4, pointRadius: 0,
@@ -742,32 +716,27 @@ function renderKpiSparklines() {
   });
 }
 
-/* ═══ KPI TYPE BARS ═══ */
-function renderKpiTypeBars() {
+/* ═══ KPI TYPE BREAKDOWN — iconos + conteo en gris ═══ */
+function renderKpiTypeBreakdowns() {
   var now = new Date();
   var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
   var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0, 0, 0, 0);
 
-  function renderBar(id, subset) {
+  function renderBreakdown(id, subset) {
     var el = document.getElementById(id);
     if (!el) return;
     var counts = {};
     TYPE_KEYS.forEach(function(t) { counts[t] = 0; });
     subset.forEach(function(n) { if (counts[n.source_type] !== undefined) counts[n.source_type]++; });
-    var total = TYPE_KEYS.reduce(function(s, t) { return s + counts[t]; }, 0);
-    if (total === 0) { el.innerHTML = ''; return; }
     el.innerHTML = TYPE_KEYS.map(function(t) {
-      var pct = Math.round(counts[t] / total * 100);
-      if (pct < 1) return '';
-      return '<div class="kpi-typebar-seg" style="width:' + pct + '%;background:' + SOURCE_COLORS[t] + '" title="' + TYPE_LABELS[t] + ': ' + counts[t] + '"></div>';
+      return '<span class="kpi-type-item">' + TYPE_SVGS[t] + '<span>' + counts[t] + '</span></span>';
     }).join('');
   }
 
-  renderBar('kpi-typebar-hoy',    state.allNews.filter(function(n) { return n.published_at >= todayStart; }));
-  renderBar('kpi-typebar-48h',    state.allNews.filter(function(n) { return n.published_at >= h48ago; }));
-  renderBar('kpi-typebar-semana', state.allNews.filter(function(n) { return n.published_at >= mon.toISOString(); }));
-  renderBar('kpi-typebar-sources', state.allNews);
+  renderBreakdown('kpi-types-hoy',    state.allNews.filter(function(n) { return n.published_at >= todayStart; }));
+  renderBreakdown('kpi-types-48h',    state.allNews.filter(function(n) { return n.published_at >= h48ago; }));
+  renderBreakdown('kpi-types-semana', state.allNews.filter(function(n) { return n.published_at >= mon.toISOString(); }));
 }
 
 /* ═══ LOGO HTML HELPER ═══ */
@@ -784,41 +753,59 @@ function logoHtml(name, type, icon) {
   return '<div style="' + style + '">' + escHtml(initial) + '</div>';
 }
 
+/* ═══ HANDLER GLOBAL: cambio de período (gráfico + top5) ═══ */
+function onPeriodChange(days, btnEl) {
+  newsActivityPeriod = days;
+  document.querySelectorAll('#news-period-tabs .period-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btnEl) btnEl.classList.add('active');
+  updateTop5Labels(days);
+  loadNewsActivityChart(days);
+  loadTop5(days, newsActiveTypes);
+}
+
+/* ═══ HANDLER GLOBAL: cambio de tipo (gráfico + top5) ═══ */
+function toggleTypeNewsFilter(btn) {
+  var type = btn.dataset.type;
+  newsActiveTypes[type] = !newsActiveTypes[type];
+  btn.classList.toggle('active', newsActiveTypes[type]);
+  loadNewsActivityChart(newsActivityPeriod);
+  loadTop5(newsActivityPeriod, newsActiveTypes);
+}
+
 /* ═══ PUBLICACIONES POR DÍA (daily_stats) ═══ */
-async function loadNewsActivity(days, btnEl) {
+function loadNewsActivity(days, btnEl) {
   newsActivityPeriod = days;
   if (btnEl) {
     document.querySelectorAll('#news-period-tabs .period-btn').forEach(function(b) { b.classList.remove('active'); });
     btnEl.classList.add('active');
   }
+  loadNewsActivityChart(days);
+}
+
+async function loadNewsActivityChart(days) {
   var msgEl = document.getElementById('news-activity-msg');
   var wrapEl = document.getElementById('news-activity-wrap');
-  var subEl = document.getElementById('news-chart-sub');
+  var subEl  = document.getElementById('news-chart-sub');
   msgEl.style.display = 'flex';
   msgEl.innerHTML = '<div class="spinner"></div>';
   wrapEl.style.display = 'none';
-
   try {
     var res = await db.from('daily_stats')
       .select('date, source_type, news_count')
       .order('date', { ascending: false })
       .range(0, 5999);
-
     if (res.error) throw res.error;
     var data = res.data || [];
-
     if (data.length === 0) {
       msgEl.innerHTML = '<span>Sin datos en daily_stats</span>';
       return;
     }
-
     var activeTypes = TYPE_KEYS.filter(function(t) { return newsActiveTypes[t]; });
     var allDates = [];
     var seen = {};
     data.forEach(function(r) { if (!seen[r.date]) { seen[r.date] = true; allDates.push(r.date); } });
     allDates.sort();
     var useDates = allDates.slice(-days);
-
     var pivot = {};
     useDates.forEach(function(d) { pivot[d] = 0; });
     data.forEach(function(r) {
@@ -826,22 +813,17 @@ async function loadNewsActivity(days, btnEl) {
         pivot[r.date] += (r.news_count || 0);
       }
     });
-
     var labels = useDates.map(function(d) {
       var dt = new Date(d + 'T12:00:00');
       return dt.toLocaleDateString('es', { day: '2-digit', month: 'short' });
     });
     var counts = useDates.map(function(d) { return pivot[d]; });
-    var total = counts.reduce(function(a, b) { return a + b; }, 0);
-
+    var total  = counts.reduce(function(a, b) { return a + b; }, 0);
     if (subEl) subEl.textContent = total.toLocaleString('es') + ' publicaciones · últimos ' + days + 'd';
-
     msgEl.style.display = 'none';
     wrapEl.style.display = 'block';
-
     var canvas = document.getElementById('chart-activity-news');
     if (chartActivityNews) { chartActivityNews.destroy(); chartActivityNews = null; }
-
     chartActivityNews = new Chart(canvas, {
       type: 'line',
       data: {
@@ -871,59 +853,56 @@ async function loadNewsActivity(days, btnEl) {
   }
 }
 
-function toggleTypeNewsFilter(btn) {
-  var type = btn.dataset.type;
-  newsActiveTypes[type] = !newsActiveTypes[type];
-  btn.classList.toggle('active', newsActiveTypes[type]);
-  loadNewsActivity(newsActivityPeriod, null);
+/* ═══ TOP 5 — vía RPC get_top5, compartido con período y tipo ═══ */
+function updateTop5Labels(days) {
+  var label = days === 7 ? '7d' : days === 30 ? '30d' : days === 90 ? '3m' : '1a';
+  var ah = document.getElementById('top5-active-head');
+  var ih = document.getElementById('top5-inactive-head');
+  if (ah) ah.textContent = 'Top 5 más activos (' + label + ')';
+  if (ih) ih.textContent = 'Top 5 menos activos (' + label + ')';
 }
 
-/* ═══ TOP 5 ═══ */
-function renderTop5() {
-  var h48ago = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  var news48 = state.allNews.filter(function(n) { return n.published_at >= h48ago; });
-
-  // Build icon map: source name → icon url
-  var iconMap = {};
-  state.allSources.forEach(function(s) { if (s.icon_url) iconMap[s.name] = s.icon_url; });
-  state.allNews.forEach(function(n) { if (n.source_icon) iconMap[n.source_name] = n.source_icon; });
-
-  // Active: count from 48h news
-  var activeCounts = {};
-  news48.forEach(function(n) {
-    if (!activeCounts[n.source_name]) activeCounts[n.source_name] = { name: n.source_name, type: n.source_type, count: 0 };
-    activeCounts[n.source_name].count++;
-  });
-  var top5active = Object.values(activeCounts).sort(function(a, b) { return b.count - a.count; }).slice(0, 5);
-
-  // Inactive: LEFT JOIN from all sources
-  var inactiveCounts = {};
-  state.allSources.forEach(function(s) { inactiveCounts[s.name] = { name: s.name, type: s.type, count: 0 }; });
-  news48.forEach(function(n) { if (inactiveCounts[n.source_name]) inactiveCounts[n.source_name].count++; });
-  var top5inactive = Object.values(inactiveCounts).sort(function(a, b) { return a.count - b.count; }).slice(0, 5);
-
-  function renderRows(list, elId) {
-    var el = document.getElementById(elId);
-    if (!el) return;
-    if (list.length === 0) {
-      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Sin datos</div>';
-      return;
-    }
-    el.innerHTML = list.map(function(s) {
-      return '<div class="top5-row">' +
-        '<div class="top5-left">' +
-        logoHtml(s.name, s.type, iconMap[s.name] || '') +
-        '<div style="min-width:0">' +
-        '<div class="top5-name">' + escHtml(s.name) + '</div>' +
-        '<div class="top5-type-lbl">' + (TYPE_LABELS[s.type] || s.type) + '</div>' +
-        '</div></div>' +
-        '<div class="top5-count">' + s.count + '</div>' +
-        '</div>';
-    }).join('');
+async function loadTop5(periodDays, activeTypes) {
+  var activeEl   = document.getElementById('top5-active');
+  var inactiveEl = document.getElementById('top5-inactive');
+  var spinner = '<div style="padding:20px;text-align:center"><div class="spinner"></div></div>';
+  if (activeEl)   activeEl.innerHTML   = spinner;
+  if (inactiveEl) inactiveEl.innerHTML = spinner;
+  updateTop5Labels(periodDays);
+  try {
+    var typesList = TYPE_KEYS.filter(function(t) { return activeTypes[t]; });
+    var rpcParams = { period_days: periodDays };
+    if (typesList.length < TYPE_KEYS.length) rpcParams.types_filter = typesList;
+    var res = await db.rpc('get_top5', rpcParams);
+    if (res.error) throw res.error;
+    var data = res.data || { active: [], inactive: [] };
+    renderTop5Rows(data.active   || [], 'top5-active');
+    renderTop5Rows(data.inactive || [], 'top5-inactive');
+  } catch(e) {
+    var errHtml = '<div style="padding:12px;font-size:12px;color:var(--red)">Error: ' + escHtml(e.message) + '</div>';
+    if (activeEl)   activeEl.innerHTML   = errHtml;
+    if (inactiveEl) inactiveEl.innerHTML = errHtml;
   }
+}
 
-  renderRows(top5active, 'top5-active');
-  renderRows(top5inactive, 'top5-inactive');
+function renderTop5Rows(list, elId) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  if (!list || list.length === 0) {
+    el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Sin datos</div>';
+    return;
+  }
+  el.innerHTML = list.map(function(s) {
+    return '<div class="top5-row">' +
+      '<div class="top5-left">' +
+      logoHtml(s.name, s.type, s.icon_url || '') +
+      '<div style="min-width:0">' +
+      '<div class="top5-name">' + escHtml(s.name) + '</div>' +
+      '<div class="top5-type-lbl">' + (TYPE_LABELS[s.type] || s.type) + '</div>' +
+      '</div></div>' +
+      '<div class="top5-count">' + (s.cnt || 0) + '</div>' +
+      '</div>';
+  }).join('');
 }
 
 /* ═══ DB: ACTIVIDAD DIARIA ═══ */
@@ -941,13 +920,11 @@ async function loadDbActivity(days, btnEl) {
     if (res.error) throw res.error;
     var data = res.data || [];
     if (data.length === 0) { document.getElementById('db-activity-msg').textContent = 'Sin datos disponibles'; return; }
-
     var allDates = [];
     var seen = {};
     data.forEach(function(r) { if (!seen[r.date]) { seen[r.date] = true; allDates.push(r.date); } });
     allDates.sort();
     var useDates = allDates.slice(-days);
-
     var pivot = {};
     useDates.forEach(function(d) { pivot[d] = { prensa_digital: 0, prensa_escrita: 0, television: 0, radio: 0, bytes: 0 }; });
     data.forEach(function(r) {
@@ -956,10 +933,9 @@ async function loadDbActivity(days, btnEl) {
         pivot[r.date].bytes += (r.bytes_total || 0);
       }
     });
-    var labels = useDates.map(function(d) { var dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es', { day: '2-digit', month: 'short' }); });
+    var labels   = useDates.map(function(d) { var dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es', { day: '2-digit', month: 'short' }); });
     var newsTotal = useDates.map(function(d) { return TYPE_KEYS.reduce(function(s, t) { return s + (pivot[d][t] || 0); }, 0); });
-    var mbData = useDates.map(function(d) { return Math.round(pivot[d].bytes / 1024 / 1024 * 100) / 100; });
-
+    var mbData    = useDates.map(function(d) { return Math.round(pivot[d].bytes / 1024 / 1024 * 100) / 100; });
     document.getElementById('db-activity-msg').style.display = 'none';
     document.getElementById('db-activity-wrap').style.display = 'block';
     var canvas = document.getElementById('chart-activity-db');
@@ -969,8 +945,8 @@ async function loadDbActivity(days, btnEl) {
       data: {
         labels: labels,
         datasets: [
-          { label: 'Noticias', data: newsTotal, borderColor: '#3B82F6', backgroundColor: areaGradient(59, 130, 246, 0.15, 0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4, yAxisID: 'y' },
-          { label: 'MB del día', data: mbData, borderColor: '#D1D5DB', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, tension: 0.4, pointRadius: 0, borderDash: [4, 4], yAxisID: 'y2' }
+          { label: 'Noticias', data: newsTotal, borderColor: '#3B82F6', backgroundColor: areaGradient(59,130,246,0.15,0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4, yAxisID: 'y' },
+          { label: 'MB del día', data: mbData, borderColor: '#D1D5DB', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, tension: 0.4, pointRadius: 0, borderDash: [4,4], yAxisID: 'y2' }
         ]
       },
       options: {
@@ -978,8 +954,7 @@ async function loadDbActivity(days, btnEl) {
         plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 16, boxWidth: 20, usePointStyle: true } } },
         scales: {
           x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF', maxTicksLimit: 12 } },
-          y: { display: false },
-          y2: { display: false }
+          y: { display: false }, y2: { display: false }
         }
       }
     });
@@ -993,9 +968,7 @@ async function loadDbStorage() {
   document.getElementById('db-storage-wrap').style.display = 'none';
   document.getElementById('db-type-cards').innerHTML = '';
   try {
-    var res = await db.from('daily_stats')
-      .select('date, source_type, cumulative_bytes')
-      .order('date', { ascending: true });
+    var res = await db.from('daily_stats').select('date, source_type, cumulative_bytes').order('date', { ascending: true });
     if (res.error) throw res.error;
     var data = res.data || [];
     if (data.length === 0) { document.getElementById('db-storage-msg').textContent = 'Sin datos disponibles'; return; }
@@ -1004,7 +977,7 @@ async function loadDbStorage() {
     var latestDate = Object.keys(totals).sort().pop();
     var latestByType = {};
     data.filter(function(r) { return r.date === latestDate; }).forEach(function(r) { latestByType[r.source_type] = r.cumulative_bytes || 0; });
-    var dates = Object.keys(totals).sort();
+    var dates  = Object.keys(totals).sort();
     var gbData = dates.map(function(d) { return Math.round(totals[d] / 1024 / 1024 / 1024 * 1000) / 1000; });
     var labels = dates.map(function(d) { var dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es', { day: '2-digit', month: 'short' }); });
     document.getElementById('db-storage-msg').style.display = 'none';
@@ -1013,17 +986,11 @@ async function loadDbStorage() {
     if (chartStorageDb) { chartStorageDb.destroy(); chartStorageDb = null; }
     chartStorageDb = new Chart(canvas, {
       type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{ label: 'GB acumulados', data: gbData, borderColor: '#6B7280', backgroundColor: areaGradient(107, 114, 128, 0.15, 0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4 }]
-      },
+      data: { labels: labels, datasets: [{ label: 'GB acumulados', data: gbData, borderColor: '#6B7280', backgroundColor: areaGradient(107,114,128,0.15,0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' GB'; } } } },
-        scales: {
-          x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } },
-          y: { display: false }
-        }
+        scales: { x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } }, y: { display: false } }
       }
     });
     renderTypeCards(latestByType);
