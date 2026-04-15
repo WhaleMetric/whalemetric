@@ -510,13 +510,14 @@ async function loadData() {
   showLoading();
   try {
     var cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    var [newsRes, srcRes] = await Promise.all([
+    var [newsRes, srcRes, statsRes] = await Promise.all([
       db.from('news')
         .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
         .gte('published_at', cutoff)
         .order('published_at', { ascending: false })
-        .limit(10000),
+        .range(0, 9999),
       db.from('sources').select('name, type').order('name'),
+      db.rpc('get_news_stats'),
     ]);
     if (newsRes.error) throw newsRes.error;
     state.allSources = srcRes.data || [];
@@ -529,7 +530,7 @@ async function loadData() {
         source_icon: n.sources ? (n.sources.icon_url || '') : '',
       };
     });
-    updateKPIs();
+    updateKPIs(statsRes.data);
     updateBadges();
     populateSourceFilter();
     applyFilters();
@@ -538,18 +539,25 @@ async function loadData() {
   } catch (e) { showError(e.message); }
 }
 
-/* ═══ KPIs ═══ */
-function updateKPIs() {
-  var all = state.allNews;
-  var now = new Date();
-  var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-  var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
-  var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0);
-  var monIso = mon.toISOString();
-  document.getElementById('kpi-hoy').textContent = all.filter(function(n) { return n.published_at >= todayStart; }).length;
-  document.getElementById('kpi-48h').textContent = all.filter(function(n) { return n.published_at >= h48ago; }).length;
-  document.getElementById('kpi-semana').textContent = all.filter(function(n) { return n.published_at >= monIso; }).length;
-  document.getElementById('kpi-sources').textContent = new Set(all.map(function(n) { return n.source_name; })).size;
+/* ═══ KPIs — desde RPC para conteos exactos sin límite de filas ═══ */
+function updateKPIs(stats) {
+  if (stats && typeof stats === 'object') {
+    document.getElementById('kpi-hoy').textContent    = stats.today          ?? '—';
+    document.getElementById('kpi-48h').textContent    = stats.last48h        ?? '—';
+    document.getElementById('kpi-semana').textContent = stats.this_week      ?? '—';
+    document.getElementById('kpi-sources').textContent= stats.active_sources ?? '—';
+  } else {
+    // Fallback client-side si el RPC falla
+    var all = state.allNews;
+    var now = new Date();
+    var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+    var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+    var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0);
+    document.getElementById('kpi-hoy').textContent    = all.filter(function(n) { return n.published_at >= todayStart; }).length;
+    document.getElementById('kpi-48h').textContent    = all.filter(function(n) { return n.published_at >= h48ago; }).length;
+    document.getElementById('kpi-semana').textContent = all.filter(function(n) { return n.published_at >= mon.toISOString(); }).length;
+    document.getElementById('kpi-sources').textContent= new Set(all.map(function(n) { return n.source_name; })).size;
+  }
 }
 
 function updateBadges() {
