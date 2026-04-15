@@ -96,8 +96,8 @@ const html = `<!DOCTYPE html>
   .chart-head { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
   .chart-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
   .chart-sub { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
-  .chart-wrap { position: relative; height: 240px; }
-  .chart-wrap-sm { position: relative; height: 180px; }
+  .chart-wrap { position: relative; height: 200px; }
+  .chart-wrap-sm { position: relative; height: 140px; }
 
   /* ═══ PERIOD TABS ═══ */
   .period-tabs { display: flex; gap: 4px; }
@@ -473,7 +473,7 @@ let chartActivityDb = null;
 let chartStorageDb = null;
 let state = {
   view: 'all', search: '', source: '', type: '', from: '', to: '',
-  sort: 'published_at', dir: 'desc', page: 0, allNews: [], filtered: [],
+  sort: 'published_at', dir: 'desc', page: 0, allNews: [], filtered: [], allSources: [],
 };
 let searchTimeout = null;
 
@@ -509,14 +509,18 @@ function refreshCurrent() {
 async function loadData() {
   showLoading();
   try {
-    const { data, error } = await db
-      .from('news')
-      .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
-      .gte('published_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
-      .order('published_at', { ascending: false })
-      .limit(2500);
-    if (error) throw error;
-    state.allNews = (data || []).map(function(n) {
+    var cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    var [newsRes, srcRes] = await Promise.all([
+      db.from('news')
+        .select(\`id, title, description, url, published_at, created_at, sources(name, type, icon_url)\`)
+        .gte('published_at', cutoff)
+        .order('published_at', { ascending: false })
+        .limit(10000),
+      db.from('sources').select('name, type').order('name'),
+    ]);
+    if (newsRes.error) throw newsRes.error;
+    state.allSources = srcRes.data || [];
+    state.allNews = (newsRes.data || []).map(function(n) {
       return {
         id: n.id, title: n.title, description: n.description, url: n.url,
         published_at: n.published_at, created_at: n.created_at,
@@ -542,9 +546,9 @@ function updateKPIs() {
   var h48ago = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
   var mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay() + 6) % 7)); mon.setHours(0,0,0,0);
   var monIso = mon.toISOString();
-  document.getElementById('kpi-hoy').textContent = all.filter(function(n) { return (n.published_at || n.created_at) >= todayStart; }).length;
-  document.getElementById('kpi-48h').textContent = all.filter(function(n) { return (n.published_at || n.created_at) >= h48ago; }).length;
-  document.getElementById('kpi-semana').textContent = all.filter(function(n) { return (n.published_at || n.created_at) >= monIso; }).length;
+  document.getElementById('kpi-hoy').textContent = all.filter(function(n) { return n.published_at >= todayStart; }).length;
+  document.getElementById('kpi-48h').textContent = all.filter(function(n) { return n.published_at >= h48ago; }).length;
+  document.getElementById('kpi-semana').textContent = all.filter(function(n) { return n.published_at >= monIso; }).length;
   document.getElementById('kpi-sources').textContent = new Set(all.map(function(n) { return n.source_name; })).size;
 }
 
@@ -557,37 +561,63 @@ function updateBadges() {
   });
 }
 
+/* ═══ GRADIENT HELPER ═══ */
+function areaGradient(r, g, b, a0, a1) {
+  return function(context) {
+    var chart = context.chart;
+    var area = chart.chartArea;
+    if (!area) return 'rgba(' + r + ',' + g + ',' + b + ',' + a0 + ')';
+    var grad = chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+    grad.addColorStop(0, 'rgba(' + r + ',' + g + ',' + b + ',' + a0 + ')');
+    grad.addColorStop(1, 'rgba(' + r + ',' + g + ',' + b + ',' + a1 + ')');
+    return grad;
+  };
+}
+
 /* ═══ MINI ACTIVITY CHART ═══ */
 function renderMiniActivityChart() {
   var canvas = document.getElementById('chart-activity-news');
   if (!canvas || typeof Chart === 'undefined') return;
   if (chartActivityNews) { chartActivityNews.destroy(); chartActivityNews = null; }
+
+  // Build date range from earliest published_at or Apr 6
+  var allDatesSet = {};
+  state.allNews.forEach(function(n) { var d = (n.published_at || '').slice(0,10); if (d) allDatesSet[d] = true; });
+  var earliest = Object.keys(allDatesSet).sort()[0] || '2026-04-06';
   var days = [];
-  for (var i = 6; i >= 0; i--) {
-    var d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
-    days.push(d.toISOString().slice(0,10));
-  }
-  var grouped = {};
-  days.forEach(function(d) { grouped[d] = { prensa_digital: 0, prensa_escrita: 0, television: 0, radio: 0 }; });
+  var cur = new Date(earliest + 'T12:00:00');
+  var todayEnd = new Date(); todayEnd.setHours(23,59,59,0);
+  while (cur <= todayEnd) { days.push(cur.toISOString().slice(0,10)); cur.setDate(cur.getDate() + 1); }
+
+  // Count total per day using published_at
+  var counts = {};
+  days.forEach(function(d) { counts[d] = 0; });
   state.allNews.forEach(function(n) {
-    var d = (n.published_at || n.created_at || '').slice(0,10);
-    if (grouped[d] && n.source_type) grouped[d][n.source_type] = (grouped[d][n.source_type] || 0) + 1;
+    var d = (n.published_at || '').slice(0,10);
+    if (counts[d] !== undefined) counts[d]++;
   });
+
   var labels = days.map(function(d) { var dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es', {day:'2-digit',month:'short'}); });
+  var data = days.map(function(d) { return counts[d]; });
+
   chartActivityNews = new Chart(canvas, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: labels,
-      datasets: TYPE_KEYS.map(function(t) {
-        return { label: TYPE_LABELS[t], data: days.map(function(d) { return grouped[d][t] || 0; }), backgroundColor: SOURCE_COLORS[t] + 'CC', stack: 'a' };
-      })
+      datasets: [{
+        label: 'Noticias publicadas',
+        data: data,
+        borderColor: '#3B82F6',
+        backgroundColor: areaGradient(59, 130, 246, 0.18, 0),
+        fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4,
+      }]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' noticias'; } } } },
       scales: {
-        x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 } } },
-        y: { stacked: true, grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 }, precision: 0 } }
+        x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF', maxTicksLimit: 12 } },
+        y: { display: false }
       }
     }
   });
@@ -596,20 +626,27 @@ function renderMiniActivityChart() {
 /* ═══ TOP 5 ═══ */
 function renderTop5() {
   var h48ago = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
-  var news48 = state.allNews.filter(function(n) { return (n.published_at || n.created_at) >= h48ago; });
-  var sourceCounts = {};
+  var news48 = state.allNews.filter(function(n) { return n.published_at >= h48ago; });
+
+  // Active: count from news
+  var activeCounts = {};
   news48.forEach(function(n) {
-    if (!sourceCounts[n.source_name]) sourceCounts[n.source_name] = { name: n.source_name, type: n.source_type, count: 0 };
-    sourceCounts[n.source_name].count++;
+    if (!activeCounts[n.source_name]) activeCounts[n.source_name] = { name: n.source_name, type: n.source_type, count: 0 };
+    activeCounts[n.source_name].count++;
   });
-  var sorted = Object.values(sourceCounts).sort(function(a,b) { return b.count - a.count; });
-  var top5active = sorted.slice(0,5);
-  var top5inactive = sorted.filter(function(s) { return s.count >= 5; }).sort(function(a,b) { return a.count - b.count; }).slice(0,5);
+  var top5active = Object.values(activeCounts).sort(function(a,b) { return b.count - a.count; }).slice(0,5);
+
+  // Inactive: LEFT JOIN from all sources (include 0-count)
+  var inactiveCounts = {};
+  state.allSources.forEach(function(s) { inactiveCounts[s.name] = { name: s.name, type: s.type, count: 0 }; });
+  news48.forEach(function(n) { if (inactiveCounts[n.source_name]) inactiveCounts[n.source_name].count++; });
+  var top5inactive = Object.values(inactiveCounts).sort(function(a,b) { return a.count - b.count; }).slice(0,5);
+
   function renderRows(list, elId) {
     var el = document.getElementById(elId);
     if (!el) return;
     if (list.length === 0) {
-      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Sin datos suficientes</div>';
+      el.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--text-tertiary)">Sin datos</div>';
       return;
     }
     el.innerHTML = list.map(function(s) {
@@ -648,25 +685,28 @@ async function loadDbActivity(days, btnEl) {
       }
     });
     var labels = useDates.map(function(d) { var dt = new Date(d + 'T12:00:00'); return dt.toLocaleDateString('es', {day:'2-digit',month:'short'}); });
+    var newsTotal = useDates.map(function(d) { return TYPE_KEYS.reduce(function(s,t) { return s + (pivot[d][t]||0); }, 0); });
     var mbData = useDates.map(function(d) { return Math.round(pivot[d].bytes / 1024 / 1024 * 100) / 100; });
     document.getElementById('db-activity-msg').style.display = 'none';
     document.getElementById('db-activity-wrap').style.display = 'block';
     var canvas = document.getElementById('chart-activity-db');
     if (chartActivityDb) { chartActivityDb.destroy(); chartActivityDb = null; }
-    var barDatasets = TYPE_KEYS.map(function(t) {
-      return { type: 'bar', label: TYPE_LABELS[t], data: useDates.map(function(d) { return pivot[d][t] || 0; }), backgroundColor: SOURCE_COLORS[t] + 'CC', stack: 'a', yAxisID: 'y' };
-    });
-    var lineDataset = { type: 'line', label: 'MB del día', data: mbData, borderColor: '#0A0A0A', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: days <= 30 ? 3 : 1, tension: 0.3, yAxisID: 'y2' };
     chartActivityDb = new Chart(canvas, {
-      type: 'bar',
-      data: { labels: labels, datasets: barDatasets.concat([lineDataset]) },
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Noticias', data: newsTotal, borderColor: '#3B82F6', backgroundColor: areaGradient(59,130,246,0.15,0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4, yAxisID: 'y' },
+          { label: 'MB del día', data: mbData, borderColor: '#D1D5DB', backgroundColor: 'transparent', fill: false, borderWidth: 1.5, tension: 0.4, pointRadius: 0, borderDash: [4,4], yAxisID: 'y2' }
+        ]
+      },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 12 } } },
+        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, padding: 16, boxWidth: 20, usePointStyle: true } } },
         scales: {
-          x: { stacked: true, grid: { display: false }, ticks: { font: { size: 11 }, maxTicksLimit: 14 } },
-          y: { stacked: true, position: 'left', grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 }, precision: 0 }, title: { display: true, text: 'Noticias', font: { size: 11 } } },
-          y2: { position: 'right', grid: { drawOnChartArea: false }, ticks: { font: { size: 11 } }, title: { display: true, text: 'MB', font: { size: 11 } } }
+          x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF', maxTicksLimit: 12 } },
+          y: { display: false },
+          y2: { display: false }
         }
       }
     });
@@ -701,14 +741,14 @@ async function loadDbStorage() {
       type: 'line',
       data: {
         labels: labels,
-        datasets: [{ label: 'GB acumulados (total)', data: gbData, borderColor: '#0A0A0A', backgroundColor: 'rgba(10,10,10,0.06)', fill: true, borderWidth: 2, pointRadius: 3, tension: 0.3 }]
+        datasets: [{ label: 'GB acumulados', data: gbData, borderColor: '#6B7280', backgroundColor: areaGradient(107,114,128,0.15,0), fill: true, borderWidth: 2, tension: 0.4, pointRadius: 0, pointHoverRadius: 4 }]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y + ' GB'; } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: '#F0F0F0' }, ticks: { font: { size: 11 }, callback: function(v) { return v + ' GB'; } } }
+          x: { grid: { display: false }, border: { display: false }, ticks: { font: { size: 10 }, color: '#9CA3AF' } },
+          y: { display: false }
         }
       }
     });
@@ -759,7 +799,7 @@ function applyFilters() {
 function sortNews(arr) {
   return [...arr].sort(function(a, b) {
     var va = a[state.sort] || '', vb = b[state.sort] || '';
-    if (state.sort === 'published_at') { va = va || a.created_at; vb = vb || b.created_at; }
+    if (state.sort === 'published_at') { va = va || ''; vb = vb || ''; }
     if (state.sort === 'source') { va = a.source_name; vb = b.source_name; }
     var cmp = String(va).localeCompare(String(vb), 'es', { numeric: true });
     return state.dir === 'asc' ? cmp : -cmp;
