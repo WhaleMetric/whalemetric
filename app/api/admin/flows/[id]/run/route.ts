@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const db = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export const dynamic = 'force-dynamic';
 
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const db = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     const { id } = await params;
     const now = new Date().toISOString();
 
-    // Mark as running (worker Python polleará este estado)
     const { data, error } = await db
       .from('flows_config')
       .update({ last_status: 'running', last_run_at: now, updated_at: now })
@@ -24,7 +25,6 @@ export async function POST(
 
     if (error) throw error;
 
-    // Insert a log entry for the manual trigger
     await db.from('flow_logs').insert({
       flow_id: id,
       level: 'info',
@@ -33,7 +33,8 @@ export async function POST(
     });
 
     return NextResponse.json({ success: true, data, triggered_at: now });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
