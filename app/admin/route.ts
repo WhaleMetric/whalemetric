@@ -223,7 +223,7 @@ const html = `<!DOCTYPE html>
       </a>
     </div>
 
-    <a href="/fuentes" class="sidebar-btn" style="text-decoration:none">
+    <a href="/admin/fuentes" class="sidebar-btn" style="text-decoration:none">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 010 14.14M4.93 4.93a10 10 0 000 14.14"/><path d="M15.54 8.46a5 5 0 010 7.07M8.46 8.46a5 5 0 000 7.07"/></svg>
       Gestionar fuentes
     </a>

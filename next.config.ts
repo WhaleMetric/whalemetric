@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
         permanent: false,
         has: [{ type: "host", value: "app.whalemetric.com" }],
       },
+      {
+        source: "/fuentes",
+        destination: "/admin/fuentes",
+        permanent: true,
+      },
     ];
   },
 };

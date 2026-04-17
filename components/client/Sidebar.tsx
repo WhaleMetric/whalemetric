@@ -219,8 +219,8 @@ export default function Sidebar() {
 
         {/* Fuentes de datos */}
         <Link
-          href="/fuentes"
-          className={`nav-item ${pathname === "/fuentes" ? "active" : ""}`}
+          href="/admin/fuentes"
+          className={`nav-item ${pathname === "/admin/fuentes" ? "active" : ""}`}
         >
           {icons.fuentes}
           <span style={{ fontSize: 11, textTransform: "uppercase" as const, letterSpacing: "0.5px", fontWeight: 500 }}>
