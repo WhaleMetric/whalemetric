@@ -16,6 +16,7 @@ type FlowRow = {
   last_status: 'ok' | 'error' | 'running' | 'idle';
   items_processed_today: number;
   params: Record<string, unknown>;
+  has_worker: boolean;
 };
 
 export async function GET() {
@@ -27,7 +28,7 @@ export async function GET() {
 
     const { data, error } = await db
       .from('flows_config')
-      .select('id, slug, name, description, category, enabled, schedule_cron, interval_seconds, last_run_at, last_status, items_processed_today, params')
+      .select('id, slug, name, description, category, enabled, schedule_cron, interval_seconds, last_run_at, last_status, items_processed_today, params, has_worker')
       .order('category', { ascending: true })
       .order('name', { ascending: true });
 

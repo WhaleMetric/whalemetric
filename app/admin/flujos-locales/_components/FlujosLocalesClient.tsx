@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import {
+  Globe, Rss, Tv, Radio, Search,
+  Mic, Languages, Smile, Tag, Link2,
+  FileText, Newspaper, AlertTriangle,
+  Play, Settings2,
+  type LucideIcon,
+} from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,6 +27,7 @@ export interface FlowConfig {
   last_status: FlowStatus;
   items_processed_today: number;
   params: Record<string, unknown>;
+  has_worker: boolean;
 }
 
 export type FlowsGrouped = Record<FlowCategory, FlowConfig[]>;
@@ -33,21 +41,36 @@ interface LogEntry {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const SECTIONS: { id: FlowCategory; label: string; color: string }[] = [
-  { id: 'ingesta',       label: 'A  ·  Ingesta',       color: 'var(--blue-text)' },
-  { id: 'procesamiento', label: 'B  ·  Procesamiento', color: 'var(--purple-text)' },
-  { id: 'generacion',    label: 'C  ·  Generación',    color: 'var(--green-text)' },
+const SECTIONS: { id: FlowCategory; label: string }[] = [
+  { id: 'ingesta',       label: 'Ingesta' },
+  { id: 'procesamiento', label: 'Procesamiento' },
+  { id: 'generacion',    label: 'Generación' },
 ];
 
+const FLOW_ICONS: Record<string, LucideIcon> = {
+  scraping_web:        Globe,
+  rss_fetch:           Rss,
+  tv_recording:        Tv,
+  radio_recording:     Radio,
+  feed_discovery:      Search,
+  audio_transcription: Mic,
+  translation:         Languages,
+  sentiment_analysis:  Smile,
+  entity_extraction:   Tag,
+  client_matching:     Link2,
+  client_summaries:    FileText,
+  daily_clipping:      Newspaper,
+  critical_alerts:     AlertTriangle,
+};
+
 const INTERVAL_OPTIONS: { label: string; seconds: number | null; cron?: string }[] = [
-  { label: 'Cada 5 min',          seconds: 300 },
-  { label: 'Cada 15 min',         seconds: 900 },
-  { label: 'Cada 30 min',         seconds: 1800 },
-  { label: 'Cada hora',           seconds: 3600 },
-  { label: 'Cada 6h',             seconds: 21600 },
-  { label: 'Diario a las 07:00',  seconds: null, cron: '0 7 * * *' },
-  { label: 'Diario a las 08:00',  seconds: null, cron: '0 8 * * *' },
-  { label: 'Custom',              seconds: -1 },
+  { label: 'Cada 5 min',         seconds: 300 },
+  { label: 'Cada 15 min',        seconds: 900 },
+  { label: 'Cada 30 min',        seconds: 1800 },
+  { label: 'Cada hora',          seconds: 3600 },
+  { label: 'Cada 6h',            seconds: 21600 },
+  { label: 'Diario a las 07:00', seconds: null, cron: '0 7 * * *' },
+  { label: 'Diario a las 08:00', seconds: null, cron: '0 8 * * *' },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -62,25 +85,25 @@ function timeAgo(iso: string | null): string {
   return `Hace ${Math.floor(h / 24)}d`;
 }
 
-function statusBadge(status: FlowStatus) {
-  const map: Record<FlowStatus, { cls: string; icon: string; label: string }> = {
-    ok:      { cls: 'badge badge-ok',      icon: '✅', label: 'OK' },
-    error:   { cls: 'badge badge-error',   icon: '❌', label: 'Error' },
-    running: { cls: 'badge badge-running', icon: '⏳', label: 'Running' },
-    idle:    { cls: 'badge badge-idle',    icon: '⚪', label: 'Parado' },
+function StatusBadge({ status }: { status: FlowStatus }) {
+  const map: Record<FlowStatus, { cls: string; label: string }> = {
+    ok:      { cls: 'badge badge-ok',      label: 'OK' },
+    error:   { cls: 'badge badge-error',   label: 'Error' },
+    running: { cls: 'badge badge-running', label: 'Running' },
+    idle:    { cls: 'badge badge-idle',    label: 'Parado' },
   };
-  const { cls, icon, label } = map[status];
-  return <span className={cls}>{icon} {label}</span>;
+  const { cls, label } = map[status];
+  return <span className={cls}>{label}</span>;
 }
 
 function currentOptLabel(flow: FlowConfig): string {
   if (flow.schedule_cron) {
     const opt = INTERVAL_OPTIONS.find((o) => o.cron === flow.schedule_cron);
-    return opt ? opt.label : 'Custom';
+    return opt ? opt.label : 'Personalizado';
   }
   if (flow.interval_seconds) {
     const opt = INTERVAL_OPTIONS.find((o) => o.seconds === flow.interval_seconds);
-    return opt ? opt.label : 'Custom';
+    return opt ? opt.label : 'Personalizado';
   }
   return '—';
 }
@@ -142,7 +165,7 @@ function LogModal({
   );
 }
 
-// ─── Flow Card ────────────────────────────────────────────────────────────────
+// ─── Compact Flow Card ────────────────────────────────────────────────────────
 
 function FlowCard({
   flow,
@@ -158,26 +181,29 @@ function FlowCard({
   onLogs: (id: string, name: string) => void;
 }) {
   const [running, setRunning] = useState(false);
-  const [scheduleMode, setScheduleMode] = useState<'preset' | 'custom'>('preset');
-  const [customSeconds, setCustomSeconds] = useState(String(flow.interval_seconds ?? 300));
 
   async function handleRun() {
     setRunning(true);
     try { await onRun(flow.id); } finally { setRunning(false); }
   }
 
+  const Icon = FLOW_ICONS[flow.slug] ?? Settings2;
   const hasConfigBtn = flow.slug === 'tv_recording' || flow.slug === 'radio_recording';
   const configHref = flow.slug === 'tv_recording' ? '/admin/flujos-locales/tv' : '/admin/flujos-locales/radio';
-  const configLabel = flow.slug === 'tv_recording' ? 'Configurar canales' : 'Configurar emisoras';
+  const configLabel = flow.slug === 'tv_recording' ? 'Configurar' : 'Configurar';
 
   return (
-    <div className="card fade-in" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 550, fontSize: 14, color: 'var(--text-primary)', marginBottom: 2 }}>{flow.name}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)', lineHeight: 1.4 }}>{flow.description ?? ''}</div>
+    <div className="flow-card fade-in">
+      {/* Header: icon + name + toggle */}
+      <div className="flow-card-head">
+        <div className="flow-card-title">
+          <Icon className="flow-card-icon" strokeWidth={1.75} />
+          <div className="flow-card-name-wrap">
+            <div className="flow-card-name">{flow.name}</div>
+            {flow.description && <div className="flow-card-desc" title={flow.description}>{flow.description}</div>}
+          </div>
         </div>
-        <label className="toggle" style={{ flexShrink: 0, marginTop: 2 }}>
+        <label className="toggle" style={{ flexShrink: 0 }}>
           <input
             type="checkbox"
             checked={flow.enabled}
@@ -188,81 +214,54 @@ function FlowCard({
         </label>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-        {statusBadge(flow.last_status)}
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Última ejecución: <strong style={{ color: 'var(--text-secondary)' }}>{timeAgo(flow.last_run_at)}</strong>
-        </span>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-          Items hoy: <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-jetbrains-mono, monospace)' }}>{flow.items_processed_today}</strong>
-        </span>
+      {/* Meta row: status + last + today + no-worker badge */}
+      <div className="flow-card-meta">
+        <StatusBadge status={flow.last_status} />
+        <span className="meta-item">Última: <strong>{timeAgo(flow.last_run_at)}</strong></span>
+        <span className="meta-item meta-mono">Hoy: <strong>{flow.items_processed_today}</strong></span>
+        {!flow.has_worker && <span className="badge badge-idle" title="Aún no hay worker Python conectado para este flujo">Sin worker</span>}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ fontSize: 12, color: 'var(--text-tertiary)', flexShrink: 0 }}>Frecuencia:</span>
-        {scheduleMode === 'preset' ? (
-          <select
-            className="select-input"
-            value={currentOptLabel(flow)}
-            onChange={(e) => {
-              const opt = INTERVAL_OPTIONS.find((o) => o.label === e.target.value);
-              if (!opt) return;
-              if (opt.seconds === -1) { setScheduleMode('custom'); return; }
-              onChangeSchedule(flow.id, opt.seconds ?? null, opt.cron ?? null);
-            }}
-          >
-            {INTERVAL_OPTIONS.map((o) => (
-              <option key={o.label} value={o.label}>{o.label}</option>
-            ))}
-          </select>
-        ) : (
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            <input
-              type="number"
-              min={60}
-              value={customSeconds}
-              onChange={(e) => setCustomSeconds(e.target.value)}
-              style={{ width: 80, height: 30, border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '0 8px', fontSize: 12 }}
-            />
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>segundos</span>
-            <button
-              className="btn btn-secondary"
-              style={{ padding: '4px 10px', fontSize: 12 }}
-              onClick={() => { onChangeSchedule(flow.id, Number(customSeconds), null); setScheduleMode('preset'); }}
-            >
-              OK
-            </button>
-            <button className="btn btn-ghost" onClick={() => setScheduleMode('preset')}>Cancelar</button>
-          </div>
-        )}
-      </div>
+      {/* Frequency select (full width) */}
+      <select
+        className="select-input flow-card-select"
+        value={currentOptLabel(flow)}
+        onChange={(e) => {
+          const opt = INTERVAL_OPTIONS.find((o) => o.label === e.target.value);
+          if (!opt) return;
+          onChangeSchedule(flow.id, opt.seconds ?? null, opt.cron ?? null);
+        }}
+      >
+        {currentOptLabel(flow) === 'Personalizado' && <option value="Personalizado">Personalizado</option>}
+        {currentOptLabel(flow) === '—' && <option value="—">— Sin programar —</option>}
+        {INTERVAL_OPTIONS.map((o) => (
+          <option key={o.label} value={o.label}>{o.label}</option>
+        ))}
+      </select>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
-        <button
-          className="btn btn-primary"
-          style={{ fontSize: 12, padding: '5px 12px' }}
-          disabled={running || !flow.enabled}
-          onClick={handleRun}
-        >
-          {running ? <span className="spinner" style={{ width: 12, height: 12, borderWidth: 1.5 }} /> : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="12" height="12">
-              <polygon points="5 3 19 12 5 21 5 3" />
-            </svg>
-          )}
-          {running ? 'Ejecutando…' : 'Ejecutar ahora'}
-        </button>
-        <button
-          className="btn btn-ghost"
-          style={{ fontSize: 12 }}
-          onClick={() => onLogs(flow.id, flow.name)}
-        >
-          Ver logs
-        </button>
-        {hasConfigBtn && (
-          <a href={configHref} className="btn btn-secondary" style={{ fontSize: 12, padding: '5px 12px', marginLeft: 'auto', textDecoration: 'none' }}>
-            {configLabel} →
+      {/* Footer: config (primary secondary) + logs + run-now (tertiary) */}
+      <div className="flow-card-footer">
+        {hasConfigBtn ? (
+          <a href={configHref} className="btn btn-secondary flow-card-config">
+            {configLabel}
           </a>
-        )}
+        ) : <span />}
+        <div className="flow-card-footer-right">
+          <button className="link-ghost" onClick={() => onLogs(flow.id, flow.name)}>
+            Ver logs
+          </button>
+          <button
+            className="link-ghost link-ghost-run"
+            disabled={running || !flow.enabled}
+            onClick={handleRun}
+            title={flow.enabled ? 'Ejecutar manualmente' : 'Activa el flujo para poder ejecutarlo'}
+          >
+            {running
+              ? <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+              : <Play className="link-ghost-icon" strokeWidth={2} />}
+            {running ? 'Ejecutando…' : 'Ejecutar'}
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -280,7 +279,6 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
     setTimeout(() => setToast(null), 3000);
   }
 
-  // Update a single flow (by id) inside the grouped state.
   const updateFlow = useCallback((id: string, patch: Partial<FlowConfig>) => {
     setFlows((prev) => {
       const next: FlowsGrouped = { ingesta: [...prev.ingesta], procesamiento: [...prev.procesamiento], generacion: [...prev.generacion] };
@@ -335,14 +333,7 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
   return (
     <>
       {toast && (
-        <div style={{
-          position: 'fixed', top: 16, right: 16, zIndex: 60,
-          background: 'var(--accent)', color: 'white',
-          padding: '10px 16px', borderRadius: 'var(--radius)', fontSize: 13,
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)', animation: 'fadeInUp 200ms ease',
-        }}>
-          {toast}
-        </div>
+        <div className="flow-toast">{toast}</div>
       )}
 
       {logsModal && (
@@ -386,9 +377,9 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
           const items = flows[section.id];
           if (!items.length) return null;
           return (
-            <div key={section.id} style={{ marginBottom: 32 }}>
-              <div className="section-label" style={{ color: section.color }}>{section.label}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <section key={section.id} className="flow-section">
+              <h2 className="flow-section-title">{section.label}</h2>
+              <div className="flow-grid">
                 {items.map((flow) => (
                   <FlowCard
                     key={flow.id}
@@ -400,7 +391,7 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
                   />
                 ))}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>

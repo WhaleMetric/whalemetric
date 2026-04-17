@@ -18,7 +18,7 @@ async function fetchFlowsGrouped(): Promise<FlowsGrouped> {
 
     const { data, error } = await db
       .from('flows_config')
-      .select('id, slug, name, description, category, enabled, schedule_cron, interval_seconds, last_run_at, last_status, items_processed_today, params')
+      .select('id, slug, name, description, category, enabled, schedule_cron, interval_seconds, last_run_at, last_status, items_processed_today, params, has_worker')
       .order('category', { ascending: true })
       .order('name', { ascending: true });
 
