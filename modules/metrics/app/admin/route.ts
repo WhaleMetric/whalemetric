@@ -274,19 +274,10 @@ const html = `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Supabase
       </a>
-      <!-- Flujos Automáticos -->
-      <button class="nav-item" style="width:100%;border:none;background:none;font-family:inherit;justify-content:space-between;" onclick="toggleSubmenu('flujos-submenu')">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;flex-shrink:0;opacity:0.55;"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          Flujos Automáticos
-        </div>
-        <svg id="flujos-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;flex-shrink:0;opacity:0.55;transition:transform 150ms ease;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
-      </button>
-      <div id="flujos-submenu" style="display:none;">
-        <a class="nav-item" href="/admin/flujos" style="padding-left:46px;font-size:12px;">
-          Gestionar Flujos
-        </a>
-      </div>
+      <a class="nav-item" href="/admin/flujos-locales">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Flujos en local
+      </a>
     </nav>
 
     <div class="sidebar-footer">
