@@ -1,5 +1,7 @@
 'use client';
 
+import 'reactflow/dist/style.css';
+
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import ReactFlow, {
   Background,
@@ -9,8 +11,8 @@ import ReactFlow, {
   useNodesState,
   type Edge,
   type Node,
+  type ReactFlowInstance,
 } from 'reactflow';
-import 'reactflow/dist/style.css';
 import { Loader2, RotateCw } from 'lucide-react';
 
 import { createClient } from '@/lib/supabase/browser';
@@ -68,6 +70,7 @@ export default function FlowsPage() {
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [rfInstance, setRfInstance] = useState<ReactFlowInstance | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -105,9 +108,16 @@ export default function FlowsPage() {
   useEffect(() => {
     if (flows.length === 0) return;
     const { nodes: n, edges: e } = buildNodesAndEdges(flows, FLOW_GRAPH, reducedMotion);
+    console.log('Layout aplicado:', n[0]?.position);
     setNodes(n);
     setEdges(e);
   }, [flows, reducedMotion, setNodes, setEdges]);
+
+  useEffect(() => {
+    if (rfInstance && nodes.length > 0) {
+      setTimeout(() => rfInstance.fitView({ padding: 0.2 }), 50);
+    }
+  }, [rfInstance, nodes]);
 
   const activeCount = useMemo(() => flows.filter((f) => f.enabled).length, [flows]);
 
@@ -151,7 +161,7 @@ export default function FlowsPage() {
 
       {/* Canvas */}
       <div
-        className="h-[calc(100vh-140px)] w-full"
+        className="h-[calc(100vh-200px)] w-full bg-gray-50"
         role="application"
         aria-label="Diagrama del pipeline de flujos"
       >
@@ -186,6 +196,7 @@ export default function FlowsPage() {
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
+            onInit={setRfInstance}
             fitView
             minZoom={0.4}
             maxZoom={1.5}
