@@ -15,30 +15,39 @@ export interface FlowNodeData {
   enabled:     boolean;
   last_status: FlowStatus;
   last_run_at: string | null;
+  onToggle:    (slug: string, enabled: boolean) => void;
 }
 
-// ── Icons (inline SVG so no Tailwind/Icon lib needed) ────────────────────────
+// ── Category icons (inline SVG) ───────────────────────────────────────────────
 
 function IconIngesta() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/>
+      <path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/>
+      <path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/>
     </svg>
   );
 }
-
 function IconProcesamiento() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <rect x="9" y="9" width="6" height="6"/>
+      <line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/>
+      <line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/>
+      <line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/>
+      <line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/>
     </svg>
   );
 }
-
 function IconGeneracion() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
     </svg>
   );
 }
@@ -49,12 +58,10 @@ const CATEGORY_ICONS = {
   generacion:    IconGeneracion,
 };
 
-// ── Status styling ────────────────────────────────────────────────────────────
+// ── Status badge ──────────────────────────────────────────────────────────────
 
-type BadgeInfo = { label: string; bg: string; color: string };
-
-function getBadge(enabled: boolean, status: FlowStatus): BadgeInfo {
-  if (!enabled) return { label: 'parado', bg: '#F9FAFB', color: '#9CA3AF' };
+function getBadge(enabled: boolean, status: FlowStatus) {
+  if (!enabled) return { label: 'parado', bg: '#F3F4F6', color: '#9CA3AF' };
   switch (status) {
     case 'running': return { label: 'running', bg: '#DBEAFE', color: '#1E40AF' };
     case 'ok':      return { label: 'ok',      bg: '#D1FAE5', color: '#065F46' };
@@ -63,18 +70,55 @@ function getBadge(enabled: boolean, status: FlowStatus): BadgeInfo {
   }
 }
 
-function getBorderColor(enabled: boolean, status: FlowStatus): string {
+function getBorderColor(enabled: boolean, status: FlowStatus) {
   if (!enabled) return '#F0F0F0';
   if (status === 'running') return '#3B82F6';
   if (status === 'error')   return '#EF4444';
   return '#E5E7EB';
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── iOS Toggle ────────────────────────────────────────────────────────────────
+
+function IOSToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <div
+      role="switch"
+      aria-checked={enabled}
+      tabIndex={0}
+      onClick={(e) => { e.stopPropagation(); onToggle(); }}
+      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.stopPropagation(); onToggle(); } }}
+      style={{
+        width: 36,
+        height: 20,
+        borderRadius: 10,
+        background: enabled ? '#22C55E' : '#D1D5DB',
+        position: 'relative',
+        cursor: 'pointer',
+        flexShrink: 0,
+        transition: 'background 0.22s ease',
+        outline: 'none',
+      }}
+    >
+      <div style={{
+        position: 'absolute',
+        width: 16,
+        height: 16,
+        borderRadius: '50%',
+        background: '#fff',
+        top: 2,
+        left: enabled ? 18 : 2,
+        transition: 'left 0.22s ease',
+        boxShadow: '0 1px 4px rgba(0,0,0,0.22)',
+      }} />
+    </div>
+  );
+}
+
+// ── Node component ────────────────────────────────────────────────────────────
 
 function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
-  const Icon  = CATEGORY_ICONS[data.category];
-  const badge = getBadge(data.enabled, data.last_status);
+  const Icon   = CATEGORY_ICONS[data.category];
+  const badge  = getBadge(data.enabled, data.last_status);
   const border = getBorderColor(data.enabled, data.last_status);
 
   return (
@@ -86,21 +130,21 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
         border: `1.5px solid ${border}`,
         borderRadius: 10,
         padding: '10px 12px',
-        opacity: data.enabled ? 1 : 0.5,
+        opacity: data.enabled ? 1 : 0.55,
         boxSizing: 'border-box',
-        cursor: 'default',
         fontFamily: 'inherit',
+        transition: 'opacity 0.2s, border-color 0.2s',
       }}
     >
       <Handle
         type="target"
-        position={Position.Left}
+        position={Position.Top}
         style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }}
       />
 
-      {/* Top row: icon + badge */}
+      {/* Row 1: icon + badge + toggle */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
-        <span style={{ color: '#9CA3AF', display: 'flex' }}>
+        <span style={{ color: '#9CA3AF', display: 'flex', flexShrink: 0 }}>
           <Icon />
         </span>
         <span style={{
@@ -112,9 +156,15 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
           fontWeight: 600,
           background: badge.bg,
           color: badge.color,
+          flexShrink: 0,
         }}>
           {badge.label}
         </span>
+        <div style={{ flex: 1 }} />
+        <IOSToggle
+          enabled={data.enabled}
+          onToggle={() => data.onToggle(data.slug, !data.enabled)}
+        />
       </div>
 
       {/* Name */}
@@ -140,7 +190,7 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
 
       <Handle
         type="source"
-        position={Position.Right}
+        position={Position.Bottom}
         style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }}
       />
     </div>

@@ -20,12 +20,10 @@ import { AnimatedEdge, type AnimatedEdgeData } from './AnimatedEdge';
 import { FLOW_GRAPH } from './flow-graph';
 import { getLayoutedElements } from './layout-utils';
 
-// ── ReactFlow type registrations (defined outside component to stay stable) ──
-
 const nodeTypes = { custom: FlowNode };
 const edgeTypes = { animated: AnimatedEdge };
 
-// ── Build graph from DB rows ──────────────────────────────────────────────────
+// ── Build nodes + edges from DB rows ─────────────────────────────────────────
 
 function buildGraph(
   flows: FlowNodeData[],
@@ -67,28 +65,54 @@ function buildGraph(
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FlowsPage() {
-  const [flows,  setFlows]  = useState<FlowNodeData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error,  setError]  = useState<string | null>(null);
+  const [flows,        setFlows]        = useState<FlowNodeData[]>([]);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<AnimatedEdgeData>([]);
-  const rfRef = useRef<ReactFlowInstance | null>(null);
+
+  const rfRef        = useRef<ReactFlowInstance | null>(null);
+  const initialFitRef = useRef(false); // fitView only once
 
   // Detect prefers-reduced-motion
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
-    mq.addEventListener('change', handler);
-    return () => mq.removeEventListener('change', handler);
+    const h = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    mq.addEventListener('change', h);
+    return () => mq.removeEventListener('change', h);
   }, []);
 
-  // Fetch flows from Supabase
+  // ── Toggle a flow on/off (Supabase + local state) ─────────────────────────
+
+  const handleToggle = useCallback(async (slug: string, enabled: boolean) => {
+    // Optimistic update
+    setFlows((prev) =>
+      prev.map((f) => f.slug === slug ? { ...f, enabled } : f),
+    );
+    try {
+      const supabase = createClient();
+      const { error: err } = await supabase
+        .from('flows_config')
+        .update({ enabled })
+        .eq('slug', slug);
+      if (err) throw err;
+    } catch {
+      // Revert on error
+      setFlows((prev) =>
+        prev.map((f) => f.slug === slug ? { ...f, enabled: !enabled } : f),
+      );
+    }
+  }, []);
+
+  // ── Fetch all flows ───────────────────────────────────────────────────────
+
   const fetchFlows = useCallback(async () => {
     setLoading(true);
     setError(null);
+    initialFitRef.current = false;
     try {
       const supabase = createClient();
       const { data, error: err } = await supabase
@@ -96,7 +120,8 @@ export default function FlowsPage() {
         .select('slug, name, category, enabled, last_status, last_run_at')
         .order('category', { ascending: true });
       if (err) throw err;
-      setFlows((data ?? []) as FlowNodeData[]);
+      // onToggle is injected at render time, not stored in flows state
+      setFlows((data ?? []) as unknown as FlowNodeData[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando flujos');
     } finally {
@@ -106,31 +131,36 @@ export default function FlowsPage() {
 
   useEffect(() => { fetchFlows(); }, [fetchFlows]);
 
-  // Rebuild graph whenever flows or reducedMotion changes
+  // ── Rebuild graph when flows / reducedMotion change ───────────────────────
+
   useEffect(() => {
     if (!flows.length) return;
-    const { nodes: n, edges: e } = buildGraph(flows, reducedMotion);
+    // Inject onToggle into every node's data
+    const flowsWithCb: FlowNodeData[] = flows.map((f) => ({ ...f, onToggle: handleToggle }));
+    const { nodes: n, edges: e } = buildGraph(flowsWithCb, reducedMotion);
     setNodes(n);
     setEdges(e);
-  }, [flows, reducedMotion, setNodes, setEdges]);
+  }, [flows, reducedMotion, handleToggle, setNodes, setEdges]);
 
-  // fitView after graph is set
+  // ── fitView only on first load ─────────────────────────────────────────────
+
   useEffect(() => {
-    if (!rfRef.current || !nodes.length) return;
-    const t = setTimeout(() => rfRef.current?.fitView({ padding: 0.15 }), 60);
+    if (!rfRef.current || !nodes.length || initialFitRef.current) return;
+    initialFitRef.current = true;
+    const t = setTimeout(() => rfRef.current?.fitView({ padding: 0.12 }), 60);
     return () => clearTimeout(t);
   }, [nodes]);
 
   const activeCount = useMemo(() => flows.filter((f) => f.enabled).length, [flows]);
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#FAFAFA' }}>
 
       {/* Header */}
       <div style={{
-        padding: '14px 24px',
+        padding: '12px 24px',
         borderBottom: '1px solid #E5E7EB',
         background: '#fff',
         display: 'flex',
@@ -140,43 +170,37 @@ export default function FlowsPage() {
         flexShrink: 0,
       }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.3px' }}>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: '#111827', margin: 0, letterSpacing: '-0.3px' }}>
             Pipeline de Flujos
           </h1>
-          <p style={{ fontSize: 12, color: '#9CA3AF', margin: '2px 0 0', lineHeight: 1.4 }}>
+          <p style={{ fontSize: 11, color: '#9CA3AF', margin: '1px 0 0' }}>
             Ingesta → Procesamiento → Generación
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {/* Active count */}
           {flows.length > 0 && (
-            <span style={{
-              fontSize: 11, color: '#6B7280', background: '#F3F4F6',
-              padding: '3px 10px', borderRadius: 20,
-            }}>
+            <span style={{ fontSize: 11, color: '#6B7280', background: '#F3F4F6', padding: '3px 10px', borderRadius: 20 }}>
               {activeCount} / {flows.length} activos
             </span>
           )}
 
-          {/* Legend */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <LegendDot color="#10B981" label="OK" />
             <LegendDot color="#3B82F6" label="Running" pulse />
             <LegendDot color="#EF4444" label="Error" />
-            <LegendDot color="#9CA3AF" label="Parado" />
+            <LegendDot color="#D1D5DB" label="Inactivo" />
           </div>
 
-          {/* Refresh */}
           <button
             onClick={fetchFlows}
             disabled={loading}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 12px', fontSize: 13, cursor: 'pointer',
+              padding: '6px 12px', fontSize: 12, cursor: 'pointer',
               border: '1px solid #E5E7EB', borderRadius: 8,
-              background: loading ? '#F9FAFB' : '#fff',
-              color: '#374151', opacity: loading ? 0.6 : 1,
+              background: '#fff', color: '#374151',
+              opacity: loading ? 0.6 : 1,
             }}
           >
             <RefreshIcon spinning={loading} />
@@ -213,9 +237,9 @@ export default function FlowsPage() {
             onEdgesChange={onEdgesChange}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
-            onInit={(instance) => { rfRef.current = instance; }}
+            onInit={(i) => { rfRef.current = i; }}
             fitView
-            minZoom={0.3}
+            minZoom={0.25}
             maxZoom={1.5}
             proOptions={{ hideAttribution: true }}
           >
@@ -224,10 +248,10 @@ export default function FlowsPage() {
             <MiniMap
               nodeColor={(n) => {
                 const d = n.data as FlowNodeData;
-                if (!d?.enabled)                    return '#F3F4F6';
-                if (d.last_status === 'running')     return '#3B82F6';
-                if (d.last_status === 'error')       return '#EF4444';
-                if (d.last_status === 'ok')          return '#10B981';
+                if (!d?.enabled)                return '#F3F4F6';
+                if (d.last_status === 'running') return '#3B82F6';
+                if (d.last_status === 'error')   return '#EF4444';
+                if (d.last_status === 'ok')      return '#10B981';
                 return '#D1D5DB';
               }}
               maskColor="rgba(0,0,0,0.04)"
@@ -243,15 +267,11 @@ export default function FlowsPage() {
   );
 }
 
-// ── Small helpers ─────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      position: 'absolute', inset: 0,
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-    }}>
+    <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
       {children}
     </div>
   );
@@ -260,25 +280,18 @@ function Centered({ children }: { children: React.ReactNode }) {
 function LegendDot({ color, label, pulse }: { color: string; label: string; pulse?: boolean }) {
   return (
     <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#6B7280' }}>
-      <span style={{
-        width: 8, height: 8, borderRadius: '50%', background: color,
-        animation: pulse ? 'rfPulse 1.5s ease-in-out infinite' : 'none',
-        display: 'inline-block',
-      }} />
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block', animation: pulse ? 'rfPulse 1.5s ease-in-out infinite' : 'none' }} />
       {label}
-      <style>{`@keyframes rfPulse { 0%,100%{opacity:1} 50%{opacity:.3} }`}</style>
+      <style>{`@keyframes rfPulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style>
     </span>
   );
 }
 
 function RefreshIcon({ spinning }: { spinning: boolean }) {
   return (
-    <svg
-      width="14" height="14" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      style={{ animation: spinning ? 'rfSpin 0.7s linear infinite' : 'none' }}
-    >
-      <style>{`@keyframes rfSpin { to { transform: rotate(360deg); } }`}</style>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      style={{ animation: spinning ? 'rfSpin 0.7s linear infinite' : 'none' }}>
+      <style>{`@keyframes rfSpin{to{transform:rotate(360deg)}}`}</style>
       <polyline points="23 4 23 10 17 10"/>
       <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
     </svg>
@@ -287,11 +300,8 @@ function RefreshIcon({ spinning }: { spinning: boolean }) {
 
 function SpinnerIcon() {
   return (
-    <svg
-      width="28" height="28" viewBox="0 0 24 24" fill="none"
-      stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round"
-      style={{ animation: 'rfSpin 0.7s linear infinite' }}
-    >
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" strokeWidth="2" strokeLinecap="round"
+      style={{ animation: 'rfSpin 0.7s linear infinite' }}>
       <path d="M21 12a9 9 0 1 1-6.219-8.56" stroke="#6B7280"/>
     </svg>
   );

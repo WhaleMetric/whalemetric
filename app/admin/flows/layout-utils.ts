@@ -10,7 +10,8 @@ export function getLayoutedElements<N extends Node, E extends Edge>(
 ): { nodes: N[]; edges: E[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'LR', ranksep: 120, nodesep: 56 });
+  // TB = top-to-bottom: ingesta arriba, generación abajo
+  g.setGraph({ rankdir: 'TB', ranksep: 80, nodesep: 40 });
 
   nodes.forEach((n) => g.setNode(n.id, { width: NODE_W, height: NODE_H }));
   edges.forEach((e) => g.setEdge(e.source, e.target));
@@ -23,8 +24,8 @@ export function getLayoutedElements<N extends Node, E extends Edge>(
       return {
         ...n,
         position: { x: pos.x - NODE_W / 2, y: pos.y - NODE_H / 2 },
-        sourcePosition: 'right' as const,
-        targetPosition: 'left' as const,
+        sourcePosition: 'bottom' as const,
+        targetPosition: 'top'   as const,
       };
     }),
     edges,
