@@ -23,7 +23,11 @@ import { getLayoutedElements } from './layout-utils';
 const nodeTypes = { custom: FlowNode };
 const edgeTypes = { animated: AnimatedEdge };
 
-// ── Build nodes + edges from DB rows ─────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+interface Toast { id: number; msg: string; ok: boolean }
+
+// ── Build nodes + edges ───────────────────────────────────────────────────────
 
 function buildGraph(
   flows: FlowNodeData[],
@@ -53,10 +57,7 @@ function buildGraph(
         target:   tgt,
         type:     'animated',
         animated: false,
-        data: {
-          active:        srcFlow.enabled && tgtFlow.enabled,
-          reducedMotion,
-        },
+        data: { active: srcFlow.enabled && tgtFlow.enabled, reducedMotion },
       });
     }
   }
@@ -67,18 +68,29 @@ function buildGraph(
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FlowsPage() {
-  const [flows,        setFlows]        = useState<FlowNodeData[]>([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState<string | null>(null);
+  const [flows,         setFlows]         = useState<FlowNodeData[]>([]);
+  const [loading,       setLoading]       = useState(true);
+  const [error,         setError]         = useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const [toasts,        setToasts]        = useState<Toast[]>([]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNodeData>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<AnimatedEdgeData>([]);
 
-  const rfRef        = useRef<ReactFlowInstance | null>(null);
-  const initialFitRef = useRef(false); // fitView only once
+  const rfRef         = useRef<ReactFlowInstance | null>(null);
+  const initialFitRef = useRef(false);
+  const toastIdRef    = useRef(0);
 
-  // Detect prefers-reduced-motion
+  // ── Toast helper ─────────────────────────────────────────────────────────
+
+  const showToast = useCallback((msg: string, ok: boolean) => {
+    const id = ++toastIdRef.current;
+    setToasts((prev) => [...prev, { id, msg, ok }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  }, []);
+
+  // ── prefers-reduced-motion ───────────────────────────────────────────────
+
   useEffect(() => {
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReducedMotion(mq.matches);
@@ -87,13 +99,10 @@ export default function FlowsPage() {
     return () => mq.removeEventListener('change', h);
   }, []);
 
-  // ── Toggle a flow on/off (Supabase + local state) ─────────────────────────
+  // ── Supabase toggle (all nodes except rss_fetch which uses its own handler) ─
 
   const handleToggle = useCallback(async (slug: string, enabled: boolean) => {
-    // Optimistic update
-    setFlows((prev) =>
-      prev.map((f) => f.slug === slug ? { ...f, enabled } : f),
-    );
+    setFlows((prev) => prev.map((f) => f.slug === slug ? { ...f, enabled } : f));
     try {
       const supabase = createClient();
       const { error: err } = await supabase
@@ -102,14 +111,11 @@ export default function FlowsPage() {
         .eq('slug', slug);
       if (err) throw err;
     } catch {
-      // Revert on error
-      setFlows((prev) =>
-        prev.map((f) => f.slug === slug ? { ...f, enabled: !enabled } : f),
-      );
+      setFlows((prev) => prev.map((f) => f.slug === slug ? { ...f, enabled: !enabled } : f));
     }
   }, []);
 
-  // ── Fetch all flows ───────────────────────────────────────────────────────
+  // ── Fetch all flows from Supabase ────────────────────────────────────────
 
   const fetchFlows = useCallback(async () => {
     setLoading(true);
@@ -122,7 +128,6 @@ export default function FlowsPage() {
         .select('slug, name, category, enabled, last_status, last_run_at')
         .order('category', { ascending: true });
       if (err) throw err;
-      // onToggle is injected at render time, not stored in flows state
       setFlows((data ?? []) as unknown as FlowNodeData[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error cargando flujos');
@@ -133,18 +138,51 @@ export default function FlowsPage() {
 
   useEffect(() => { fetchFlows(); }, [fetchFlows]);
 
-  // ── Rebuild graph when flows / reducedMotion change ───────────────────────
+  // ── Poll rss_fetch status every 30s ─────────────────────────────────────
+
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const res  = await fetch('/api/admin/rss/status');
+        const json = await res.json();
+        if (!json.ok) return;
+        const { enabled, last_status, last_run_at } = json.data ?? {};
+        setFlows((prev) =>
+          prev.map((f) =>
+            f.slug === 'rss_fetch'
+              ? {
+                  ...f,
+                  ...(enabled      !== undefined && { enabled }),
+                  ...(last_status  !== undefined && { last_status }),
+                  ...(last_run_at  !== undefined && { last_run_at }),
+                }
+              : f,
+          ),
+        );
+      } catch {
+        // Silent — don't disrupt the UI for background polls
+      }
+    };
+
+    const id = setInterval(poll, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // ── Rebuild graph ────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!flows.length) return;
-    // Inject onToggle into every node's data
-    const flowsWithCb: FlowNodeData[] = flows.map((f) => ({ ...f, onToggle: handleToggle }));
+    const flowsWithCb: FlowNodeData[] = flows.map((f) => ({
+      ...f,
+      onToggle: handleToggle,
+      onToast:  showToast,
+    }));
     const { nodes: n, edges: e } = buildGraph(flowsWithCb, reducedMotion);
     setNodes(n);
     setEdges(e);
-  }, [flows, reducedMotion, handleToggle, setNodes, setEdges]);
+  }, [flows, reducedMotion, handleToggle, showToast, setNodes, setEdges]);
 
-  // ── fitView only on first load ─────────────────────────────────────────────
+  // ── fitView once ─────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!rfRef.current || !nodes.length || initialFitRef.current) return;
@@ -159,6 +197,26 @@ export default function FlowsPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', background: '#FAFAFA' }}>
+
+      {/* Toasts */}
+      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8, pointerEvents: 'none' }}>
+        {toasts.map((t) => (
+          <div key={t.id} style={{
+            padding: '10px 16px',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 500,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+            background: t.ok ? '#111827' : '#FEF2F2',
+            color:      t.ok ? '#fff'    : '#991B1B',
+            border:     t.ok ? 'none'   : '1px solid #FECACA',
+            animation: 'rfFadeUp 0.2s ease',
+          }}>
+            {t.msg}
+          </div>
+        ))}
+        <style>{`@keyframes rfFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}`}</style>
+      </div>
 
       {/* Header */}
       <div style={{
@@ -186,14 +244,12 @@ export default function FlowsPage() {
               {activeCount} / {flows.length} activos
             </span>
           )}
-
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <LegendDot color="#10B981" label="OK" />
             <LegendDot color="#3B82F6" label="Running" pulse />
             <LegendDot color="#EF4444" label="Error" />
             <LegendDot color="#D1D5DB" label="Inactivo" />
           </div>
-
           <button
             onClick={fetchFlows}
             disabled={loading}
@@ -269,7 +325,7 @@ export default function FlowsPage() {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Small helpers ─────────────────────────────────────────────────────────────
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (

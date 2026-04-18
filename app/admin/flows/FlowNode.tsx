@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -21,6 +21,7 @@ export interface FlowNodeData {
   last_status: FlowStatus;
   last_run_at: string | null;
   onToggle:    (slug: string, enabled: boolean) => void;
+  onToast?:    (msg: string, ok: boolean) => void;
 }
 
 // ── Category icons (inline SVG) ───────────────────────────────────────────────
@@ -84,24 +85,33 @@ function getBorderColor(enabled: boolean, status: FlowStatus) {
 
 // ── iOS Toggle ────────────────────────────────────────────────────────────────
 
-function IOSToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function IOSToggle({
+  enabled,
+  loading,
+  onToggle,
+}: {
+  enabled: boolean;
+  loading?: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div
       role="switch"
       aria-checked={enabled}
       tabIndex={0}
-      onClick={(e) => { e.stopPropagation(); onToggle(); }}
-      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.stopPropagation(); onToggle(); } }}
+      onClick={(e) => { e.stopPropagation(); if (!loading) onToggle(); }}
+      onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !loading) { e.stopPropagation(); onToggle(); } }}
       style={{
         width: 36,
         height: 20,
         borderRadius: 10,
-        background: enabled ? '#22C55E' : '#D1D5DB',
+        background: loading ? '#9CA3AF' : enabled ? '#22C55E' : '#D1D5DB',
         position: 'relative',
-        cursor: 'pointer',
+        cursor: loading ? 'wait' : 'pointer',
         flexShrink: 0,
         transition: 'background 0.22s ease',
         outline: 'none',
+        opacity: loading ? 0.7 : 1,
       }}
     >
       <div style={{
@@ -119,13 +129,63 @@ function IOSToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => vo
   );
 }
 
+// ── Play icon ─────────────────────────────────────────────────────────────────
+
+function PlayIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5,3 19,12 5,21"/>
+    </svg>
+  );
+}
+
 // ── Node component ────────────────────────────────────────────────────────────
 
 function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
+  const [toggling, setToggling] = useState(false);
+  const [running,  setRunning]  = useState(false);
+
   const Icon        = CATEGORY_ICONS[data.category];
   const badge       = getBadge(data.enabled, data.last_status);
   const border      = getBorderColor(data.enabled, data.last_status);
   const displayName = DISPLAY_NAMES[data.slug] ?? data.name;
+  const isRSS       = data.slug === 'rss_fetch';
+
+  // For rss_fetch: call WhaleMetric API via our internal proxy
+  async function handleToggle() {
+    if (isRSS) {
+      setToggling(true);
+      const action = data.enabled ? 'disable' : 'enable';
+      try {
+        const res = await fetch(`/api/admin/rss/${action}`, { method: 'POST' });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error ?? `Error ${action}`);
+        data.onToggle(data.slug, !data.enabled);
+        data.onToast?.(`RSS ${action === 'enable' ? 'activado' : 'desactivado'}`, true);
+      } catch (e) {
+        data.onToast?.(e instanceof Error ? e.message : 'Error al cambiar estado', false);
+      } finally {
+        setToggling(false);
+      }
+    } else {
+      // All other nodes: standard Supabase toggle
+      data.onToggle(data.slug, !data.enabled);
+    }
+  }
+
+  async function handleRun() {
+    setRunning(true);
+    try {
+      const res = await fetch('/api/admin/rss/run', { method: 'POST' });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? 'Error ejecutando RSS');
+      data.onToast?.('RSS en ejecución', true);
+    } catch (e) {
+      data.onToast?.(e instanceof Error ? e.message : 'Error al ejecutar', false);
+    } finally {
+      setRunning(false);
+    }
+  }
 
   return (
     <div
@@ -169,7 +229,8 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
         <div style={{ flex: 1 }} />
         <IOSToggle
           enabled={data.enabled}
-          onToggle={() => data.onToggle(data.slug, !data.enabled)}
+          loading={toggling}
+          onToggle={handleToggle}
         />
       </div>
 
@@ -193,6 +254,33 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
           ? formatDistanceToNow(new Date(data.last_run_at), { addSuffix: true, locale: es })
           : 'sin ejecuciones'}
       </div>
+
+      {/* RSS-only: Ejecutar button */}
+      {isRSS && data.enabled && (
+        <button
+          onClick={(e) => { e.stopPropagation(); handleRun(); }}
+          disabled={running}
+          title="Ejecutar ahora"
+          style={{
+            marginTop: 8,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '3px 8px',
+            fontSize: 11,
+            fontWeight: 500,
+            color: running ? '#9CA3AF' : '#374151',
+            background: running ? '#F9FAFB' : '#F3F4F6',
+            border: '1px solid #E5E7EB',
+            borderRadius: 6,
+            cursor: running ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          <PlayIcon />
+          {running ? 'Ejecutando…' : 'Ejecutar'}
+        </button>
+      )}
 
       <Handle
         type="source"
