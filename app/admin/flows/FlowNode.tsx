@@ -5,6 +5,11 @@ import { Handle, Position, type NodeProps } from 'reactflow';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
+// Display name overrides — takes precedence over the name stored in DB
+const DISPLAY_NAMES: Partial<Record<string, string>> = {
+  scraping_web: 'Scraping noticia completa',
+};
+
 export type FlowCategory = 'ingesta' | 'procesamiento' | 'generacion';
 export type FlowStatus   = 'ok' | 'error' | 'running' | 'idle';
 
@@ -117,13 +122,14 @@ function IOSToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => vo
 // ── Node component ────────────────────────────────────────────────────────────
 
 function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
-  const Icon   = CATEGORY_ICONS[data.category];
-  const badge  = getBadge(data.enabled, data.last_status);
-  const border = getBorderColor(data.enabled, data.last_status);
+  const Icon        = CATEGORY_ICONS[data.category];
+  const badge       = getBadge(data.enabled, data.last_status);
+  const border      = getBorderColor(data.enabled, data.last_status);
+  const displayName = DISPLAY_NAMES[data.slug] ?? data.name;
 
   return (
     <div
-      aria-label={data.name}
+      aria-label={displayName}
       style={{
         width: 210,
         background: '#fff',
@@ -178,7 +184,7 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       }}>
-        {data.name}
+        {displayName}
       </div>
 
       {/* Timestamp */}

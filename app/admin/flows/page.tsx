@@ -17,7 +17,7 @@ import ReactFlow, {
 import { createClient } from '@/lib/supabase/browser';
 import { FlowNode, type FlowNodeData } from './FlowNode';
 import { AnimatedEdge, type AnimatedEdgeData } from './AnimatedEdge';
-import { FLOW_GRAPH } from './flow-graph';
+import { FLOW_GRAPH, EXCLUDED_SLUGS } from './flow-graph';
 import { getLayoutedElements } from './layout-utils';
 
 const nodeTypes = { custom: FlowNode };
@@ -31,12 +31,14 @@ function buildGraph(
 ): { nodes: Node<FlowNodeData>[]; edges: Edge<AnimatedEdgeData>[] } {
   const bySlug = new Map(flows.map((f) => [f.slug, f]));
 
-  const nodes: Node<FlowNodeData>[] = flows.map((f) => ({
-    id:       f.slug,
-    type:     'custom',
-    data:     f,
-    position: { x: 0, y: 0 },
-  }));
+  const nodes: Node<FlowNodeData>[] = flows
+    .filter((f) => !EXCLUDED_SLUGS.has(f.slug))
+    .map((f) => ({
+      id:       f.slug,
+      type:     'custom',
+      data:     f,
+      position: { x: 0, y: 0 },
+    }));
 
   const edges: Edge<AnimatedEdgeData>[] = [];
   for (const [src, targets] of Object.entries(FLOW_GRAPH)) {
