@@ -14,7 +14,7 @@ export default function FlowsPage() {
   ];
 
   return (
-    <div className="w-full h-screen">
+    <div style={{ width: '100%', height: '100vh' }}>
       <ReactFlow nodes={nodes} edges={edges} fitView>
         <Background />
         <Controls />
