@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google';
 import './auth.css';
 import AuthBrand from './_components/AuthBrand';
 import AuthHero from './_components/AuthHero';
+import type { MediaLogo } from './_components/MediaRadar';
+import { createClient } from '@/lib/supabase/server';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -16,7 +18,41 @@ export const metadata: Metadata = {
   description: 'Accede o crea tu cuenta de WhaleMetric.',
 };
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
+// The query to public.sources is cheap; cachear 1h es suficiente.
+export const revalidate = 3600;
+
+async function fetchMediaLogos(): Promise<{ logos: MediaLogo[]; total: number }> {
+  try {
+    const supabase = await createClient();
+
+    const [logosRes, countRes] = await Promise.all([
+      supabase
+        .from('sources')
+        .select('id, name, icon_url, type')
+        .not('icon_url', 'is', null)
+        .order('name', { ascending: true })
+        .limit(40),
+      supabase
+        .from('sources')
+        .select('id', { count: 'exact', head: true })
+        .not('icon_url', 'is', null),
+    ]);
+
+    const logos = (logosRes.data ?? []) as MediaLogo[];
+    const total = countRes.count ?? logos.length;
+    return { logos, total };
+  } catch {
+    return { logos: [], total: 0 };
+  }
+}
+
+export default async function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { logos, total } = await fetchMediaLogos();
+
   return (
     <html lang="es" className={inter.variable}>
       <body>
@@ -30,7 +66,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </section>
 
             <aside className="auth-right">
-              <AuthHero />
+              <AuthHero mediaLogos={logos} totalMedia={total} />
             </aside>
           </div>
         </div>
