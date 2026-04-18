@@ -1,23 +1,38 @@
 /**
- * Thin server-side client for the local workers API running on
- * http://api.whalemetric.com. Every call must originate from a Next.js
- * route handler or Server Component — NEVER from a client component —
- * because the API is served over http and the panel is https (mixed
- * content would be blocked by the browser).
+ * Server-only client for the Python workers API running on
+ *   https://api.whalemetric.com
  *
- * TODO: When https is enabled on api.whalemetric.com, revisit the
- * `http://` default below and the fetch timeout handling.
+ * Exposed via Cloudflare Tunnel from a local machine. Every call MUST
+ * originate from a Next.js route handler or Server Component — NEVER
+ * from a client component — so the bearer token stays out of the
+ * browser.
+ *
+ * Config (set in Vercel):
+ *   WORKERS_API_URL   (default: https://api.whalemetric.com)
+ *   WORKERS_API_TOKEN (required; Bearer token)
+ *
+ * The documentation says /api/health is public, but the live API
+ * rejects it without a token ("Missing bearer token"), so we always
+ * attach the Authorization header when available.
  */
 
-const DEFAULT_URL = 'http://api.whalemetric.com';
-const DEFAULT_TIMEOUT_MS = 4000;
+const DEFAULT_URL = 'https://api.whalemetric.com';
+const DEFAULT_TIMEOUT_MS = 30_000;
+export const RUN_TIMEOUT_MS = 60_000;
 
-export interface WorkerStatus {
-  slug: string;
-  status: 'ok' | 'error' | 'running' | 'idle';
+export type WorkersResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status: number | null };
+
+export interface RssFetchStatus {
+  enabled: boolean;
+  interval_minutes: number;
   last_run_at: string | null;
-  items_processed_today: number;
-  message?: string;
+  last_run_status: 'success' | 'error' | 'running' | 'idle' | string | null;
+  last_run_count: number | null;
+  next_run_at: string | null;
+  total_sources?: number;
+  total_news?: number;
 }
 
 export interface WorkersHealth {
@@ -36,20 +51,44 @@ function authHeader(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function fetchWithTimeout(
-  url: string,
+async function request<T>(
+  path: string,
   init: RequestInit = {},
   timeoutMs = DEFAULT_TIMEOUT_MS
-): Promise<Response> {
+): Promise<WorkersResult<T>> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, {
+    const res = await fetch(`${baseUrl()}${path}`, {
       ...init,
       signal: controller.signal,
       cache: 'no-store',
-      headers: { 'Content-Type': 'application/json', ...authHeader(), ...(init.headers as Record<string, string> | undefined) },
+      headers: {
+        'Content-Type': 'application/json',
+        ...authHeader(),
+        ...(init.headers as Record<string, string> | undefined),
+      },
     });
+    let body: unknown;
+    try {
+      body = await res.json();
+    } catch {
+      body = null;
+    }
+    if (!res.ok) {
+      const msg =
+        (body && typeof body === 'object' && 'message' in (body as Record<string, unknown>))
+          ? String((body as { message?: unknown }).message)
+          : `HTTP ${res.status}`;
+      return { ok: false, error: msg, status: res.status };
+    }
+    return { ok: true, data: body as T };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'unknown',
+      status: null,
+    };
   } finally {
     clearTimeout(id);
   }
@@ -57,63 +96,42 @@ async function fetchWithTimeout(
 
 export async function workersHealth(): Promise<WorkersHealth> {
   const started = Date.now();
-  try {
-    const res = await fetchWithTimeout(`${baseUrl()}/api/health`);
-    return {
-      ok: res.ok,
-      status: res.status,
-      latency_ms: Date.now() - started,
-      error: res.ok ? undefined : `HTTP ${res.status}`,
-    };
-  } catch (e) {
-    return {
-      ok: false,
-      status: null,
-      latency_ms: Date.now() - started,
-      error: e instanceof Error ? e.message : 'unknown',
-    };
-  }
-}
-
-export async function workersGetAllStatus(): Promise<WorkerStatus[] | null> {
-  try {
-    const res = await fetchWithTimeout(`${baseUrl()}/api/flows/status`);
-    if (!res.ok) return null;
-    const json = (await res.json()) as { data?: WorkerStatus[] } | WorkerStatus[];
-    return Array.isArray(json) ? json : json.data ?? null;
-  } catch {
-    return null;
-  }
-}
-
-async function workersPost(path: string, body?: unknown): Promise<boolean> {
-  try {
-    const res = await fetchWithTimeout(`${baseUrl()}${path}`, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-async function workersPatch(path: string, body: unknown): Promise<boolean> {
-  try {
-    const res = await fetchWithTimeout(`${baseUrl()}${path}`, {
-      method: 'PATCH',
-      body: JSON.stringify(body),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  const res = await request<{ status?: string; time?: string }>('/api/health');
+  return {
+    ok: res.ok,
+    status: res.ok ? 200 : (res.status ?? null),
+    latency_ms: Date.now() - started,
+    error: res.ok ? undefined : res.error,
+  };
 }
 
 export const workersApi = {
-  start: (slug: string) => workersPost(`/api/flows/${slug}/start`),
-  stop: (slug: string) => workersPost(`/api/flows/${slug}/stop`),
-  runNow: (slug: string) => workersPost(`/api/flows/${slug}/run-now`),
-  config: (slug: string, body: { interval_seconds?: number | null; schedule_cron?: string | null; params?: Record<string, unknown> }) =>
-    workersPatch(`/api/flows/${slug}/config`, body),
+  /** Status of a specific flow (currently only rss_fetch is supported). */
+  status: (slug: string) =>
+    request<RssFetchStatus>(`/api/flows/${encodeURIComponent(slug)}/status`),
+
+  enable: (slug: string) =>
+    request<{ success: boolean; enabled: boolean; message?: string }>(
+      `/api/flows/${encodeURIComponent(slug)}/enable`,
+      { method: 'POST' }
+    ),
+
+  disable: (slug: string) =>
+    request<{ success: boolean; enabled: boolean; message?: string }>(
+      `/api/flows/${encodeURIComponent(slug)}/disable`,
+      { method: 'POST' }
+    ),
+
+  runNow: (slug: string) =>
+    request<{ success: boolean; job_id?: string; message?: string }>(
+      `/api/flows/${encodeURIComponent(slug)}/run`,
+      { method: 'POST' },
+      RUN_TIMEOUT_MS
+    ),
+
+  setInterval: (slug: string, intervalMinutes: number) =>
+    request<{ success: boolean; interval_minutes: number; message?: string }>(
+      `/api/flows/${encodeURIComponent(slug)}/interval`,
+      { method: 'PATCH', body: JSON.stringify({ interval_minutes: intervalMinutes }) }
+    ),
 };

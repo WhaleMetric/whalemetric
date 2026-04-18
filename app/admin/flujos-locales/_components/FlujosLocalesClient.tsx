@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Globe, Rss, Tv, Radio, Search,
   Mic, Languages, Smile, Tag, Link2,
@@ -28,9 +28,18 @@ export interface FlowConfig {
   items_processed_today: number;
   params: Record<string, unknown>;
   has_worker: boolean;
+  next_run_at?: string | null;
+  last_run_count?: number | null;
 }
 
 export type FlowsGrouped = Record<FlowCategory, FlowConfig[]>;
+
+export interface WorkersApiState {
+  online: boolean;
+  last_check: string;
+  error: string | null;
+  latency_ms?: number | null;
+}
 
 interface LogEntry {
   id: string;
@@ -39,8 +48,15 @@ interface LogEntry {
   created_at: string;
 }
 
+interface Toast {
+  id: number;
+  msg: string;
+  tone: 'info' | 'warn' | 'error';
+}
+
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+const POLL_MS = 15_000;
 const SECTIONS: { id: FlowCategory; label: string }[] = [
   { id: 'ingesta',       label: 'Ingesta' },
   { id: 'procesamiento', label: 'Procesamiento' },
@@ -108,27 +124,47 @@ function currentOptLabel(flow: FlowConfig): string {
   return '—';
 }
 
-// ─── Log Modal ────────────────────────────────────────────────────────────────
+// ─── Logs Modal — 2 tabs (Logs de BD / Estado worker) ─────────────────────────
 
-function LogModal({
-  flowId,
-  flowName,
+function LogsModal({
+  flow,
   onClose,
 }: {
-  flowId: string;
-  flowName: string;
+  flow: FlowConfig;
   onClose: () => void;
 }) {
+  const [tab, setTab] = useState<'db' | 'worker'>('db');
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingLogs, setLoadingLogs] = useState(true);
+  const [workerJson, setWorkerJson] = useState<string>('');
+  const [loadingWorker, setLoadingWorker] = useState(false);
+  const [workerError, setWorkerError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/admin/flows/${flowId}/logs`)
+    fetch(`/api/admin/flows/${flow.id}/logs`)
       .then((r) => r.json())
       .then((d) => setLogs(d.data ?? []))
       .catch(() => setLogs([]))
-      .finally(() => setLoading(false));
-  }, [flowId]);
+      .finally(() => setLoadingLogs(false));
+  }, [flow.id]);
+
+  useEffect(() => {
+    if (tab !== 'worker' || !flow.has_worker) return;
+    setLoadingWorker(true);
+    setWorkerError(null);
+    fetch(`/api/admin/flows/status`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        const slice = [...(d.data?.ingesta ?? []), ...(d.data?.procesamiento ?? []), ...(d.data?.generacion ?? [])]
+          .find((f: FlowConfig) => f.id === flow.id);
+        if (!d.workers_api?.online) {
+          setWorkerError('No se pudo contactar con el worker.');
+        }
+        setWorkerJson(JSON.stringify(slice ?? {}, null, 2));
+      })
+      .catch((e) => setWorkerError(String(e)))
+      .finally(() => setLoadingWorker(false));
+  }, [tab, flow.id, flow.has_worker]);
 
   const levelColor: Record<LogEntry['level'], string> = {
     info: 'var(--text-secondary)',
@@ -138,27 +174,65 @@ function LogModal({
 
   return (
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="modal" style={{ maxWidth: 680 }}>
+      <div className="modal" style={{ maxWidth: 720 }}>
         <div className="modal-header">
-          <span className="modal-title">Logs — {flowName}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span className="modal-title">{flow.name}</span>
+            <div style={{ display: 'flex', gap: 2, background: 'var(--bg-muted)', padding: 2, borderRadius: 'var(--radius-sm)' }}>
+              <button
+                onClick={() => setTab('db')}
+                className={tab === 'db' ? 'tab-btn tab-btn-active' : 'tab-btn'}
+              >
+                Logs de BD
+              </button>
+              <button
+                onClick={() => setTab('worker')}
+                className={tab === 'worker' ? 'tab-btn tab-btn-active' : 'tab-btn'}
+                disabled={!flow.has_worker}
+                title={flow.has_worker ? '' : 'Este flujo no tiene worker conectado'}
+              >
+                Estado worker
+              </button>
+            </div>
+          </div>
           <button className="btn btn-ghost" style={{ padding: '4px 8px' }} onClick={onClose}>✕</button>
         </div>
-        <div className="modal-body" style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)', fontSize: 12 }}>
-          {loading && <div className="spinner" style={{ margin: '20px auto' }} />}
-          {!loading && logs.length === 0 && (
-            <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px 0' }}>Sin logs recientes</p>
+        <div className="modal-body" style={{ fontFamily: 'var(--font-jetbrains-mono, monospace)', fontSize: 12, maxHeight: 460 }}>
+          {tab === 'db' && (
+            <>
+              {loadingLogs && <div className="spinner" style={{ margin: '20px auto' }} />}
+              {!loadingLogs && logs.length === 0 && (
+                <p style={{ color: 'var(--text-tertiary)', textAlign: 'center', padding: '20px 0', fontFamily: 'inherit' }}>Sin logs recientes</p>
+              )}
+              {logs.map((log) => (
+                <div key={log.id} style={{ borderBottom: '1px solid var(--border-light)', padding: '6px 0', display: 'flex', gap: 12 }}>
+                  <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                    {new Date(log.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                  <span style={{ color: levelColor[log.level] ?? 'var(--text-secondary)', flexShrink: 0, fontWeight: 500, textTransform: 'uppercase', fontSize: 10 }}>
+                    {log.level}
+                  </span>
+                  <span style={{ color: 'var(--text-primary)' }}>{log.message}</span>
+                </div>
+              ))}
+            </>
           )}
-          {logs.map((log) => (
-            <div key={log.id} style={{ borderBottom: '1px solid var(--border-light)', padding: '6px 0', display: 'flex', gap: 12 }}>
-              <span style={{ color: 'var(--text-tertiary)', flexShrink: 0 }}>
-                {new Date(log.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-              </span>
-              <span style={{ color: levelColor[log.level] ?? 'var(--text-secondary)', flexShrink: 0, fontWeight: 500, textTransform: 'uppercase', fontSize: 10 }}>
-                {log.level}
-              </span>
-              <span style={{ color: 'var(--text-primary)' }}>{log.message}</span>
-            </div>
-          ))}
+
+          {tab === 'worker' && (
+            <>
+              {loadingWorker && <div className="spinner" style={{ margin: '20px auto' }} />}
+              {!loadingWorker && workerError && (
+                <div style={{ color: 'var(--red-text)', background: 'var(--red-bg)', padding: 10, borderRadius: 'var(--radius-sm)', fontFamily: 'inherit' }}>
+                  ⚠️ {workerError}
+                </div>
+              )}
+              {!loadingWorker && !workerError && (
+                <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: 'var(--text-primary)', margin: 0 }}>
+                  {workerJson || '{}'}
+                </pre>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -177,24 +251,22 @@ function FlowCard({
   flow: FlowConfig;
   onToggle: (id: string, enabled: boolean) => void;
   onChangeSchedule: (id: string, seconds: number | null, cron: string | null) => void;
-  onRun: (id: string) => void;
-  onLogs: (id: string, name: string) => void;
+  onRun: (flow: FlowConfig) => void;
+  onLogs: (flow: FlowConfig) => void;
 }) {
   const [running, setRunning] = useState(false);
 
   async function handleRun() {
     setRunning(true);
-    try { await onRun(flow.id); } finally { setRunning(false); }
+    try { await onRun(flow); } finally { setRunning(false); }
   }
 
   const Icon = FLOW_ICONS[flow.slug] ?? Settings2;
   const hasConfigBtn = flow.slug === 'tv_recording' || flow.slug === 'radio_recording';
   const configHref = flow.slug === 'tv_recording' ? '/admin/flujos-locales/tv' : '/admin/flujos-locales/radio';
-  const configLabel = flow.slug === 'tv_recording' ? 'Configurar' : 'Configurar';
 
   return (
     <div className="flow-card fade-in">
-      {/* Header: icon + name + toggle */}
       <div className="flow-card-head">
         <div className="flow-card-title">
           <Icon className="flow-card-icon" strokeWidth={1.75} />
@@ -214,15 +286,20 @@ function FlowCard({
         </label>
       </div>
 
-      {/* Meta row: status + last + today + no-worker badge */}
       <div className="flow-card-meta">
         <StatusBadge status={flow.last_status} />
         <span className="meta-item">Última: <strong>{timeAgo(flow.last_run_at)}</strong></span>
         <span className="meta-item meta-mono">Hoy: <strong>{flow.items_processed_today}</strong></span>
-        {!flow.has_worker && <span className="badge badge-idle" title="Aún no hay worker Python conectado para este flujo">Sin worker</span>}
+        {!flow.has_worker && (
+          <span
+            className="badge badge-idle"
+            title="El worker Python de este flujo aún no está implementado"
+          >
+            Sin worker
+          </span>
+        )}
       </div>
 
-      {/* Frequency select (full width) */}
       <select
         className="select-input flow-card-select"
         value={currentOptLabel(flow)}
@@ -239,28 +316,29 @@ function FlowCard({
         ))}
       </select>
 
-      {/* Footer: config (primary secondary) + logs + run-now (tertiary) */}
       <div className="flow-card-footer">
         {hasConfigBtn ? (
           <a href={configHref} className="btn btn-secondary flow-card-config">
-            {configLabel}
+            Configurar
           </a>
         ) : <span />}
         <div className="flow-card-footer-right">
-          <button className="link-ghost" onClick={() => onLogs(flow.id, flow.name)}>
+          <button className="link-ghost" onClick={() => onLogs(flow)}>
             Ver logs
           </button>
-          <button
-            className="link-ghost link-ghost-run"
-            disabled={running || !flow.enabled}
-            onClick={handleRun}
-            title={flow.enabled ? 'Ejecutar manualmente' : 'Activa el flujo para poder ejecutarlo'}
-          >
-            {running
-              ? <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
-              : <Play className="link-ghost-icon" strokeWidth={2} />}
-            {running ? 'Ejecutando…' : 'Ejecutar'}
-          </button>
+          {flow.has_worker && (
+            <button
+              className="link-ghost link-ghost-run"
+              disabled={running || !flow.enabled}
+              onClick={handleRun}
+              title={flow.enabled ? 'Ejecutar manualmente' : 'Activa el flujo para poder ejecutarlo'}
+            >
+              {running
+                ? <span className="spinner" style={{ width: 10, height: 10, borderWidth: 1.5 }} />
+                : <Play className="link-ghost-icon" strokeWidth={2} />}
+              {running ? 'Lanzando…' : 'Ejecutar'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -269,15 +347,33 @@ function FlowCard({
 
 // ─── Main Client Component ────────────────────────────────────────────────────
 
-export default function FlujosLocalesClient({ initialFlows }: { initialFlows: FlowsGrouped }) {
+export default function FlujosLocalesClient({
+  initialFlows,
+  initialWorkers,
+}: {
+  initialFlows: FlowsGrouped;
+  initialWorkers: WorkersApiState;
+}) {
   const [flows, setFlows] = useState<FlowsGrouped>(initialFlows);
-  const [logsModal, setLogsModal] = useState<{ id: string; name: string } | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
+  const [workers, setWorkers] = useState<WorkersApiState>(initialWorkers);
+  const [logsModal, setLogsModal] = useState<FlowConfig | null>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const toastId = useRef(1);
 
-  function showToast(msg: string) {
-    setToast(msg);
-    setTimeout(() => setToast(null), 3000);
-  }
+  // Remember previous last_run_at per flow — used to detect run completion.
+  const prevRunRef = useRef<Record<string, string | null>>({});
+  useEffect(() => {
+    const all = [...flows.ingesta, ...flows.procesamiento, ...flows.generacion];
+    all.forEach((f) => {
+      if (!(f.id in prevRunRef.current)) prevRunRef.current[f.id] = f.last_run_at;
+    });
+  }, [flows]);
+
+  const pushToast = useCallback((msg: string, tone: Toast['tone'] = 'info') => {
+    const id = toastId.current++;
+    setToasts((prev) => [...prev, { id, msg, tone }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
+  }, []);
 
   const updateFlow = useCallback((id: string, patch: Partial<FlowConfig>) => {
     setFlows((prev) => {
@@ -289,40 +385,107 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
     });
   }, []);
 
+  // ── Polling every 15 s to /api/admin/flows/status ──────────────────────────
+  useEffect(() => {
+    let stopped = false;
+
+    async function tick() {
+      try {
+        const res = await fetch('/api/admin/flows/status', { cache: 'no-store' });
+        if (!res.ok) return;
+        const json = await res.json() as {
+          success: boolean;
+          data: FlowsGrouped;
+          workers_api: WorkersApiState;
+        };
+        if (stopped) return;
+        if (json.success) {
+          // Detect run completion for toast
+          const all = [...json.data.ingesta, ...json.data.procesamiento, ...json.data.generacion];
+          all.forEach((f) => {
+            const prev = prevRunRef.current[f.id];
+            if (f.has_worker && prev !== undefined && prev !== f.last_run_at && f.last_status !== 'running') {
+              const count = f.last_run_count ?? f.items_processed_today ?? 0;
+              if (f.last_status === 'ok') pushToast(`✅ ${f.name}: ${count} items procesados`, 'info');
+              else if (f.last_status === 'error') pushToast(`❌ ${f.name}: la última ejecución falló`, 'error');
+            }
+            prevRunRef.current[f.id] = f.last_run_at;
+          });
+          setFlows(json.data);
+          setWorkers(json.workers_api);
+        }
+      } catch { /* offline / transient — ignore */ }
+    }
+
+    const t = setInterval(tick, POLL_MS);
+    return () => { stopped = true; clearInterval(t); };
+  }, [pushToast]);
+
+  // ── Actions ────────────────────────────────────────────────────────────────
+
   const handleToggle = useCallback(async (id: string, enabled: boolean) => {
     updateFlow(id, { enabled });
     try {
-      await fetch(`/api/admin/flows/${id}`, {
-        method: 'PATCH',
+      const res = await fetch(`/api/admin/flows/${id}/toggle`, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled }),
       });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        updateFlow(id, { enabled: !enabled });
+        pushToast(`Error: ${json.error ?? 'no se pudo guardar'}`, 'error');
+        return;
+      }
+      if (json.worker_sync === false) {
+        pushToast(json.warning ?? 'Guardado pero el worker no respondió', 'warn');
+      }
     } catch {
       updateFlow(id, { enabled: !enabled });
+      pushToast('Error de red al togglear', 'error');
     }
-  }, [updateFlow]);
+  }, [updateFlow, pushToast]);
 
   const handleChangeSchedule = useCallback(async (id: string, seconds: number | null, cron: string | null) => {
     updateFlow(id, { interval_seconds: seconds, schedule_cron: cron });
     try {
-      await fetch(`/api/admin/flows/${id}`, {
+      const res = await fetch(`/api/admin/flows/${id}/interval`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ interval_seconds: seconds, schedule_cron: cron }),
       });
-      showToast('Frecuencia guardada');
-    } catch { /* silent */ }
-  }, [updateFlow]);
-
-  const handleRun = useCallback(async (id: string) => {
-    try {
-      await fetch(`/api/admin/flows/${id}/run`, { method: 'POST' });
-      updateFlow(id, { last_run_at: new Date().toISOString(), last_status: 'running' });
-      showToast('Flujo iniciado');
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        pushToast(`Error: ${json.error ?? 'no se pudo guardar'}`, 'error');
+        return;
+      }
+      if (json.worker_sync === false) {
+        pushToast(json.warning ?? 'Intervalo guardado pero el worker no respondió', 'warn');
+      } else {
+        pushToast('Frecuencia guardada', 'info');
+      }
     } catch {
-      showToast('Error al ejecutar el flujo');
+      pushToast('Error de red al cambiar frecuencia', 'error');
     }
-  }, [updateFlow]);
+  }, [updateFlow, pushToast]);
+
+  const handleRun = useCallback(async (flow: FlowConfig) => {
+    if (!flow.has_worker) return;
+    const ok = window.confirm(`¿Ejecutar "${flow.name}" ahora? Puede tardar 5-15 min.`);
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/flows/${flow.id}/run`, { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        pushToast(`Error: ${json.error ?? 'no se pudo ejecutar'}`, 'error');
+        return;
+      }
+      updateFlow(flow.id, { last_run_at: new Date().toISOString(), last_status: 'running' });
+      pushToast(`⏳ Ejecución iniciada${json.job_id ? ` (${json.job_id})` : ''}`, 'info');
+    } catch {
+      pushToast('Error de red al ejecutar', 'error');
+    }
+  }, [updateFlow, pushToast]);
 
   const totalFlows = flows.ingesta.length + flows.procesamiento.length + flows.generacion.length;
   const enabledCount = [flows.ingesta, flows.procesamiento, flows.generacion].reduce(
@@ -332,17 +495,15 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
 
   return (
     <>
-      {toast && (
-        <div className="flow-toast">{toast}</div>
-      )}
+      {/* Toasts */}
+      <div className="flow-toast-stack">
+        {toasts.map((t) => (
+          <div key={t.id} className={`flow-toast flow-toast-${t.tone}`}>{t.msg}</div>
+        ))}
+      </div>
 
-      {logsModal && (
-        <LogModal
-          flowId={logsModal.id}
-          flowName={logsModal.name}
-          onClose={() => setLogsModal(null)}
-        />
-      )}
+      {/* Logs modal */}
+      {logsModal && <LogsModal flow={logsModal} onClose={() => setLogsModal(null)} />}
 
       <header className="header">
         <div className="header-left">
@@ -353,6 +514,18 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
           </div>
         </div>
         <div className="header-right">
+          <span
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 12, color: workers.online ? 'var(--green-text)' : 'var(--text-tertiary)',
+              background: workers.online ? 'var(--green-bg)' : 'var(--bg-muted)',
+              padding: '3px 10px', borderRadius: 4,
+            }}
+            title={`Último check: ${new Date(workers.last_check).toLocaleTimeString('es-ES')}`}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: workers.online ? 'var(--green)' : 'var(--text-tertiary)' }} />
+            API workers {workers.online ? 'online' : 'offline'}
+          </span>
           <span style={{ fontSize: 12, color: 'var(--text-tertiary)', background: 'var(--bg-muted)', padding: '3px 10px', borderRadius: 4 }}>
             {enabledCount} / {totalFlows} activos
           </span>
@@ -360,6 +533,16 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
       </header>
 
       <div className="content">
+        {!workers.online && (
+          <div className="offline-banner" role="status">
+            <AlertTriangle strokeWidth={2} style={{ width: 16, height: 16, flexShrink: 0 }} />
+            <span>
+              <strong>API de workers offline.</strong> Los cambios se guardan pero no se sincronizarán con los workers Python hasta que la API vuelva a estar online.
+              {workers.error ? ` (${workers.error})` : ''}
+            </span>
+          </div>
+        )}
+
         <div className="page-header">
           <div>
             <div className="page-title">Flujos en local</div>
@@ -369,7 +552,7 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
 
         {totalFlows === 0 && (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 13 }}>
-            No hay flujos configurados. Aplica la migración <code>flows_local_panel</code> para inicializar los 13 flujos.
+            No hay flujos configurados. Aplica la migración <code>flows_local_panel</code> para inicializar los flujos.
           </div>
         )}
 
@@ -387,7 +570,7 @@ export default function FlujosLocalesClient({ initialFlows }: { initialFlows: Fl
                     onToggle={handleToggle}
                     onChangeSchedule={handleChangeSchedule}
                     onRun={handleRun}
-                    onLogs={(id, name) => setLogsModal({ id, name })}
+                    onLogs={(f) => setLogsModal(f)}
                   />
                 ))}
               </div>
