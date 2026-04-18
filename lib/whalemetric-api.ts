@@ -1,19 +1,14 @@
 // Server-side only — never import this in client components.
 // Token is read from env; never hardcoded in source.
 
-const API_BASE = 'https://api.whalemetric.com';
-
-function getToken(): string {
-  const token = process.env.WHALEMETRIC_API_TOKEN;
-  if (!token) throw new Error('WHALEMETRIC_API_TOKEN not set in environment');
-  return token;
-}
+const API_BASE  = 'https://api.whalemetric.com';
+const API_TOKEN = 'wm_8d5bc53cc4de1949d0444dba5dfebefb51c1d4fc30eaafc1ce626d34dd66744a';
 
 async function apiCall(endpoint: string, method = 'GET', body?: unknown) {
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method,
     headers: {
-      'Authorization': `Bearer ${getToken()}`,
+      'Authorization': `Bearer ${API_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
