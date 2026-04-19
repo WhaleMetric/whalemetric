@@ -48,21 +48,81 @@ function IconTema() {
     </svg>
   );
 }
-function IconCompetidor() {
+function IconOrganizacion() {
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <path d="M3 13V6l5-4 5 4v7" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="6" y="9" width="4" height="4" rx="0.5" />
+      <rect x="2" y="5" width="12" height="9" rx="1" />
+      <path d="M5 14V9h6v5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 2h4l1 3H5L6 2z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconInstitucion() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M8 1l7 4H1l7-4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 5v8M6 5v8M10 5v8M13 5v8" strokeLinecap="round" />
+      <path d="M1 13h14" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconPartido() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M3 2v12" strokeLinecap="round" />
+      <path d="M3 2l10 4-10 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+function IconProducto() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M2 5l1.5-3h9L14 5" strokeLinecap="round" strokeLinejoin="round" />
+      <rect x="2" y="5" width="12" height="9" rx="1" />
+      <path d="M6 5v3a2 2 0 0 0 4 0V5" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconCampana() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M11 3L14 8l-3 5H5L2 8l3-5h6z" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="8" cy="8" r="1.5" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+function IconEvento() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <rect x="2" y="4" width="12" height="10" rx="1" />
+      <path d="M5 2v3M11 2v3M2 8h12" strokeLinecap="round" />
+    </svg>
+  );
+}
+function IconNormativa() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+      <path d="M8 2v2" strokeLinecap="round" />
+      <path d="M3 4l2 4H1l2-4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M11 4l2 4H9l2-4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 8v5M13 8v5M3 13h10" strokeLinecap="round" />
+      <path d="M6 4h4" strokeLinecap="round" />
     </svg>
   );
 }
 
 const CATEGORY_ICONS: Record<SignalCategory, React.ReactNode> = {
-  marca: <IconMarca />,
-  persona: <IconPersona />,
-  zona_geografica: <IconZona />,
-  tema_sector: <IconTema />,
-  competidor: <IconCompetidor />,
+  persona:             <IconPersona />,
+  organizacion:        <IconOrganizacion />,
+  institucion_publica: <IconInstitucion />,
+  partido_politico:    <IconPartido />,
+  marca:               <IconMarca />,
+  producto_servicio:   <IconProducto />,
+  campana_iniciativa:  <IconCampana />,
+  evento:              <IconEvento />,
+  tema:                <IconTema />,
+  normativa:           <IconNormativa />,
+  zona_geografica:     <IconZona />,
 };
 
 // ── Alert pulse dot ────────────────────────────────────────────────────
@@ -249,7 +309,7 @@ function CategoryAccordion({
   category, signals, isOpen, onToggle,
   selectedId, favorites, onSelect, onToggleFavorite,
 }: AccordionProps) {
-  if (!signals.length) return null;
+  const isEmpty = signals.length === 0;
 
   return (
     <div>
@@ -274,18 +334,20 @@ function CategoryAccordion({
         <span style={{ flex: 1, fontSize: 12, fontWeight: 600, letterSpacing: '0.02em' }}>
           {CATEGORY_LABELS[category]}
         </span>
-        <span
-          style={{
-            fontSize: 11,
-            color: 'var(--text-tertiary)',
-            background: 'var(--bg-muted)',
-            padding: '1px 6px',
-            borderRadius: 10,
-            fontWeight: 500,
-          }}
-        >
-          {signals.length}
-        </span>
+        {!isEmpty && (
+          <span
+            style={{
+              fontSize: 11,
+              color: 'var(--text-tertiary)',
+              background: 'var(--bg-muted)',
+              padding: '1px 6px',
+              borderRadius: 10,
+              fontWeight: 500,
+            }}
+          >
+            {signals.length}
+          </span>
+        )}
         <span style={{ color: 'var(--text-tertiary)', display: 'flex' }}>
           <Chevron open={isOpen} />
         </span>
@@ -293,16 +355,29 @@ function CategoryAccordion({
 
       {isOpen && (
         <div>
-          {signals.map((sig) => (
-            <SignalRow
-              key={sig.id}
-              signal={sig}
-              isSelected={selectedId === sig.id}
-              isFavorite={favorites.has(sig.id)}
-              onSelect={() => onSelect(sig.id)}
-              onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id); }}
-            />
-          ))}
+          {isEmpty ? (
+            <div
+              style={{
+                padding: '6px 14px 8px 24px',
+                fontSize: 12,
+                color: 'var(--text-tertiary)',
+                fontStyle: 'italic',
+              }}
+            >
+              Sin señales asignadas
+            </div>
+          ) : (
+            signals.map((sig) => (
+              <SignalRow
+                key={sig.id}
+                signal={sig}
+                isSelected={selectedId === sig.id}
+                isFavorite={favorites.has(sig.id)}
+                onSelect={() => onSelect(sig.id)}
+                onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id); }}
+              />
+            ))
+          )}
         </div>
       )}
     </div>
