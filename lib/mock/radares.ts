@@ -53,6 +53,8 @@ const S: Record<string, UserSignal> = {
   sumar:      { id: 'mock-sumar',      name: 'Sumar',           type: 'partido_politico', status: 'ready' },
   erc:        { id: 'mock-erc',        name: 'ERC',             type: 'partido_politico', status: 'ready' },
   junts:      { id: 'mock-junts',      name: 'Junts',           type: 'partido_politico', status: 'ready' },
+  sabadell:   { id: 'mock-sabadell',   name: 'Sabadell',        type: 'organizacion',     status: 'ready' },
+  transicionEnergetica: { id: 'mock-transicion-energetica', name: 'Transición energética', type: 'tema', status: 'ready' },
 };
 
 export const MOCK_SIGNALS: UserSignal[] = Object.values(S);

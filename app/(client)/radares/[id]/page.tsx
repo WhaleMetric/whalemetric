@@ -1,5 +1,9 @@
 'use client';
 
+// TODO (bidirectional link): header chips "Tendencias detectadas (N)" and
+// "Crisis activas (N)" linking to /tendencias?subject={radar.id} and
+// /crisis?subject={radar.id}. Out of scope for the trends PR.
+
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

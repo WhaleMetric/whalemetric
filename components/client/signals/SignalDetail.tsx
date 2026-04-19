@@ -1,5 +1,9 @@
 'use client';
 
+// TODO (bidirectional link): header chips "Tendencias detectadas (N)" and
+// "Crisis activas (N)" linking to /tendencias?subject={signal.id} and
+// /crisis?subject={signal.id}. Out of scope for the trends PR.
+
 import {
   Signal,
   NarrativeFrame,
