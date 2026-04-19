@@ -2,559 +2,234 @@
 
 // TODO (bidirectional link): header chips "Tendencias detectadas (N)" and
 // "Crisis activas (N)" linking to /tendencias?subject={signal.id} and
-// /crisis?subject={signal.id}. Out of scope for the trends PR.
+// /crisis?subject={signal.id}. Out of scope here.
 
-import {
-  Signal,
-  NarrativeFrame,
-  SourceDistribution,
-  MediaVariation,
-  AlertHistoryItem,
-  TrendIndicator,
-} from '@/lib/mock/signals';
-import SignalKpiStrip from './SignalKpiStrip';
-import { VolumeChart, SentimentChart } from './SignalCharts';
-import SignalKeywords from './SignalKeywords';
-import SignalNewsTable from './SignalNewsTable';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  ResponsiveContainer,
-  Cell,
-  Tooltip,
-} from 'recharts';
-
-// ── Helpers ────────────────────────────────────────────────────────────
-
-function timeAgo(isoStr: string): string {
-  const diff = Date.now() - new Date(isoStr).getTime();
-  const h = Math.floor(diff / 3600000);
-  if (h < 1) return 'Hace menos de 1h';
-  if (h < 24) return `Hace ${h}h`;
-  const d = Math.floor(h / 24);
-  return `Hace ${d}d`;
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        color: 'var(--text-primary)',
-        marginBottom: 12,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
-  return (
-    <div
-      style={{
-        background: 'var(--bg)',
-        border: '1px solid var(--border)',
-        borderRadius: 10,
-        padding: '16px 20px',
-        marginBottom: 16,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ── Section 1: AI Narrative ────────────────────────────────────────────
-
-function AINarrativeSection({ signal }: { signal: Signal }) {
-  return (
-    <Card>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="var(--accent)" strokeWidth="1.5">
-          <path d="M8 1l1 3h3l-2.4 1.8.9 3L8 7.2 5.5 8.8l.9-3L4 4h3z" strokeLinecap="round" strokeLinejoin="round" />
-          <circle cx="12" cy="12" r="2.5" />
-          <circle cx="4" cy="12" r="1.5" />
-        </svg>
-        <SectionTitle>Narrativa IA</SectionTitle>
-      </div>
-      <p
-        style={{
-          fontSize: 13,
-          lineHeight: 1.65,
-          color: 'var(--text-secondary)',
-          margin: '0 0 12px',
-        }}
-      >
-        {signal.narrative.summary}
-      </p>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {signal.narrative.tags.map((tag) => (
-          <span
-            key={tag}
-            style={{
-              fontSize: 11,
-              fontWeight: 500,
-              background: 'var(--bg-muted)',
-              color: 'var(--text-secondary)',
-              padding: '3px 8px',
-              borderRadius: 4,
-              border: '1px solid var(--border-light)',
-            }}
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-// ── Section 3: Trend indicators ───────────────────────────────────────
-
-function TrendIndicatorCard({ indicator }: { indicator: TrendIndicator }) {
-  const up = indicator.delta > 0;
-  const neutral = indicator.delta === 0;
-  return (
-    <div
-      style={{
-        flex: '1 1 140px',
-        background: 'var(--bg-subtle)',
-        border: '1px solid var(--border-light)',
-        borderRadius: 8,
-        padding: '12px 14px',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          color: 'var(--text-tertiary)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.06em',
-          marginBottom: 4,
-        }}
-      >
-        {indicator.label}
-      </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-        <span
-          style={{
-            fontSize: 18,
-            fontWeight: 700,
-            color: 'var(--text-primary)',
-            letterSpacing: '-0.3px',
-          }}
-        >
-          {indicator.value}
-        </span>
-        {indicator.unit && (
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)' }}>
-            {indicator.unit}
-          </span>
-        )}
-      </div>
-      {!neutral && (
-        <div
-          style={{
-            marginTop: 4,
-            fontSize: 11,
-            fontWeight: 500,
-            color: up ? '#10B981' : '#EF4444',
-          }}
-        >
-          {up ? '↑' : '↓'} {Math.abs(indicator.delta)}%
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Section 4: Narrative frames + source distribution ─────────────────
-
-function HorizontalBar({ label, pct, color }: { label: string; pct: number; color: string }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 12,
-          color: 'var(--text-secondary)',
-          marginBottom: 4,
-        }}
-      >
-        <span>{label}</span>
-        <span style={{ fontWeight: 500, color: 'var(--text-primary)' }}>{pct}%</span>
-      </div>
-      <div
-        style={{
-          height: 6,
-          background: 'var(--bg-muted)',
-          borderRadius: 3,
-          overflow: 'hidden',
-        }}
-      >
-        <div
-          style={{
-            height: '100%',
-            width: `${pct}%`,
-            background: color,
-            borderRadius: 3,
-            transition: 'width 0.4s ease',
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function NarrativeFramesSection({ frames }: { frames: NarrativeFrame[] }) {
-  const COLORS = ['#6366F1', '#8B5CF6', '#A78BFA', '#C4B5FD', '#DDD6FE'];
-  return (
-    <Card style={{ flex: 1 }}>
-      <SectionTitle>Encuadres narrativos</SectionTitle>
-      {frames.map((f, i) => (
-        <HorizontalBar key={f.label} label={f.label} pct={f.pct} color={COLORS[i % COLORS.length]} />
-      ))}
-    </Card>
-  );
-}
-
-function SourceDistributionSection({ distribution }: { distribution: SourceDistribution[] }) {
-  const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444'];
-  return (
-    <Card style={{ flex: 1 }}>
-      <SectionTitle>Distribución por medio</SectionTitle>
-      {distribution.map((d, i) => (
-        <HorizontalBar key={d.label} label={d.label} pct={d.pct} color={COLORS[i % COLORS.length]} />
-      ))}
-    </Card>
-  );
-}
-
-// ── Section 5: Media variation ────────────────────────────────────────
-
-function MediaVariationCard({ item }: { item: MediaVariation }) {
-  const isPositive = item.variationPct > 0;
-  return (
-    <div
-      style={{
-        flex: '1 1 120px',
-        background: 'var(--bg-subtle)',
-        border: '1px solid var(--border-light)',
-        borderRadius: 8,
-        padding: '12px 14px',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 10,
-          fontWeight: 600,
-          color: 'var(--text-tertiary)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          marginBottom: 4,
-        }}
-      >
-        {item.label}
-      </div>
-      <div
-        style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}
-      >
-        {item.value}
-      </div>
-      <div
-        style={{
-          marginTop: 3,
-          fontSize: 11,
-          fontWeight: 500,
-          color: isPositive ? '#10B981' : '#EF4444',
-        }}
-      >
-        {isPositive ? '↑' : '↓'} {Math.abs(item.variationPct)}% vs ant.
-      </div>
-    </div>
-  );
-}
-
-function MediaVariationChart({ data }: { data: MediaVariation[] }) {
-  const chartData = data.map((d) => ({ name: d.label, value: d.variationPct }));
-  return (
-    <ResponsiveContainer width="100%" height={120}>
-      <BarChart
-        data={chartData}
-        layout="vertical"
-        margin={{ top: 0, right: 16, bottom: 0, left: 0 }}
-        barSize={12}
-      >
-        <XAxis
-          type="number"
-          tick={{ fontSize: 10, fill: 'var(--text-tertiary)' }}
-          axisLine={false}
-          tickLine={false}
-          tickFormatter={(v) => `${v}%`}
-        />
-        <YAxis
-          dataKey="name"
-          type="category"
-          tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
-          axisLine={false}
-          tickLine={false}
-          width={90}
-        />
-        <Tooltip
-          formatter={(v) => [`${v ?? 0}%`, 'Variación']}
-          contentStyle={{
-            background: 'var(--bg)',
-            border: '1px solid var(--border)',
-            borderRadius: 6,
-            fontSize: 12,
-          }}
-        />
-        <Bar dataKey="value" radius={[0, 3, 3, 0]}>
-          {chartData.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={entry.value > 0 ? '#10B981' : '#EF4444'}
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
-}
-
-// ── Section 7: Alert history ──────────────────────────────────────────
-
-const ALERT_SEVERITY: Record<AlertHistoryItem['severity'], { bg: string; color: string }> = {
-  high:   { bg: '#FEF2F2', color: '#DC2626' },
-  medium: { bg: '#FFFBEB', color: '#D97706' },
-  low:    { bg: 'var(--bg-muted)', color: 'var(--text-secondary)' },
-};
-
-const ALERT_TYPE_LABEL: Record<AlertHistoryItem['type'], string> = {
-  spike:           'Pico',
-  new_frame:       'Nuevo encuadre',
-  sentiment_shift: 'Cambio tono',
-  viral:           'Viral',
-};
-
-function AlertHistorySection({ alerts }: { alerts: AlertHistoryItem[] }) {
-  if (!alerts.length) {
-    return (
-      <Card>
-        <SectionTitle>Historial de alertas</SectionTitle>
-        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', textAlign: 'center', padding: '16px 0' }}>
-          Sin alertas recientes
-        </div>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <SectionTitle>Historial de alertas</SectionTitle>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {alerts.map((a) => {
-          const sev = ALERT_SEVERITY[a.severity];
-          return (
-            <div
-              key={a.id}
-              style={{
-                display: 'flex',
-                gap: 10,
-                padding: '10px 12px',
-                background: sev.bg,
-                borderRadius: 6,
-              }}
-            >
-              <div style={{ flexShrink: 0, paddingTop: 1 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: sev.color,
-                    background: 'rgba(255,255,255,0.6)',
-                    padding: '2px 6px',
-                    borderRadius: 3,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {ALERT_TYPE_LABEL[a.type]}
-                </span>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.5 }}>
-                  {a.message}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 2 }}>
-                  {timeAgo(a.timestamp)}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </Card>
-  );
-}
-
-// ── Main component ─────────────────────────────────────────────────────
+import type { SignalRecord } from '@/lib/types/signals';
+import { SIGNAL_CATEGORY_LABELS } from '@/lib/types/signals';
 
 interface Props {
-  signal: Signal;
-  isFavorite: boolean;
+  signal: SignalRecord;
   onToggleFavorite: () => void;
 }
 
-export default function SignalDetail({ signal, isFavorite, onToggleFavorite }: Props) {
+const STATUS_CFG: Record<SignalRecord['status'], { label: string; bg: string; color: string }> = {
+  warming_up: { label: 'Calentando datos', bg: '#FEF3C7', color: '#92400E' },
+  ready:      { label: 'Activa',           bg: '#D1FAE5', color: '#065F46' },
+  error:      { label: 'Error',            bg: '#FEE2E2', color: '#991B1B' },
+  archived:   { label: 'Archivada',        bg: '#F3F4F6', color: '#374151' },
+};
+
+export default function SignalDetail({ signal, onToggleFavorite }: Props) {
+  const status = STATUS_CFG[signal.status];
+  const aliases = signal.aliases ?? [];
+
   return (
-    <div
-      style={{
-        flex: 1,
-        overflowY: 'auto',
-        padding: '24px 28px 40px',
-        background: 'var(--bg-subtle)',
-      }}
-    >
-      {/* ── Header ── */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          marginBottom: 20,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <h1
-              style={{
-                fontSize: 22,
-                fontWeight: 700,
-                letterSpacing: '-0.4px',
-                color: 'var(--text-primary)',
-                margin: 0,
-              }}
-            >
-              {signal.name}
-            </h1>
-            {signal.hasAlert && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: '#FEF2F2',
-                  color: '#DC2626',
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                }}
-              >
-                ⚠ Alerta activa
-              </span>
-            )}
-            {signal.isInactive && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 500,
-                  background: 'var(--bg-muted)',
-                  color: 'var(--text-tertiary)',
-                  padding: '3px 8px',
-                  borderRadius: 4,
-                }}
-              >
-                Sin actividad
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
-            Actualizado {timeAgo(signal.lastUpdated)}
-          </div>
-        </div>
-        <button
-          onClick={onToggleFavorite}
-          style={{
-            background: isFavorite ? '#FFFBEB' : 'var(--bg)',
-            border: `1px solid ${isFavorite ? '#F59E0B' : 'var(--border)'}`,
-            borderRadius: 7,
-            padding: '7px 12px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            fontSize: 12,
-            fontWeight: 500,
-            color: isFavorite ? '#D97706' : 'var(--text-secondary)',
-            transition: 'all 0.15s',
-          }}
-        >
-          <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill={isFavorite ? '#F59E0B' : 'none'}
-            stroke={isFavorite ? '#F59E0B' : 'currentColor'}
-            strokeWidth="1.5"
+    <div style={{ flex: 1, overflowY: 'auto', background: 'var(--bg-subtle)' }}>
+      {/* Header */}
+      <div style={{
+        padding: '20px 28px 16px',
+        borderBottom: '1px solid var(--border)',
+        background: 'var(--bg)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+          <span style={{
+            fontSize: 10, fontWeight: 700,
+            padding: '2px 8px', borderRadius: 4,
+            background: 'var(--bg-muted)', color: 'var(--text-tertiary)',
+            textTransform: 'uppercase', letterSpacing: '0.06em',
+          }}>
+            {SIGNAL_CATEGORY_LABELS[signal.type]}
+          </span>
+          <span style={{
+            fontSize: 10, fontWeight: 600,
+            padding: '2px 8px', borderRadius: 4,
+            background: status.bg, color: status.color,
+          }}>
+            {status.label}
+          </span>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={onToggleFavorite}
+            title={signal.is_favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              padding: 4, display: 'flex', alignItems: 'center',
+            }}
           >
-            <path d="M8 1l1.9 3.8 4.2.6-3 3 .7 4.2L8 10.5 4.2 12.6l.7-4.2-3-3 4.2-.6z" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          {isFavorite ? 'En favoritos' : 'Añadir a favoritos'}
-        </button>
-      </div>
-
-      {/* ── Section 1: KPI strip ── */}
-      <SignalKpiStrip kpis={signal.kpis} />
-
-      {/* ── Section 2: AI Narrative ── */}
-      <AINarrativeSection signal={signal} />
-
-      {/* ── Section 3: Charts ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 0 }}>
-        <VolumeChart data={signal.volumeData} />
-        <SentimentChart data={signal.sentimentData} />
-      </div>
-
-      {/* ── Section 4: Trend indicators ── */}
-      <Card>
-        <SectionTitle>Indicadores de tendencia</SectionTitle>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-          {signal.trendIndicators.map((ti) => (
-            <TrendIndicatorCard key={ti.label} indicator={ti} />
-          ))}
+            <svg
+              width="16" height="16" viewBox="0 0 16 16"
+              fill={signal.is_favorite ? '#F59E0B' : 'none'}
+              stroke={signal.is_favorite ? '#F59E0B' : 'var(--text-tertiary)'}
+              strokeWidth="1.5"
+            >
+              <path d="M8 1l1.9 3.8 4.2.6-3 3 .7 4.2L8 10.5 4.2 12.6l.7-4.2-3-3 4.2-.6z" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-      </Card>
 
-      {/* ── Section 5: Narrative frames + Source distribution ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-        <NarrativeFramesSection frames={signal.narrativeFrames} />
-        <SourceDistributionSection distribution={signal.sourceDistribution} />
+        <h1 style={{
+          fontSize: 22, fontWeight: 700, color: 'var(--text-primary)',
+          margin: '0 0 8px', letterSpacing: '-0.3px', lineHeight: 1.2,
+        }}>
+          {signal.name}
+        </h1>
+
+        {signal.description && (
+          <p style={{
+            fontSize: 13, color: 'var(--text-secondary)',
+            lineHeight: 1.6, margin: '0 0 10px', maxWidth: 720,
+          }}>
+            {signal.description}
+          </p>
+        )}
+
+        {aliases.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+            <span style={{
+              fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)',
+              textTransform: 'uppercase', letterSpacing: '0.06em', marginRight: 4,
+            }}>
+              Aliases
+            </span>
+            {aliases.map((a) => (
+              <span key={a} style={{
+                fontSize: 11, fontWeight: 500,
+                padding: '3px 9px', borderRadius: 5,
+                background: 'var(--bg-muted)', color: 'var(--text-secondary)',
+                border: '1px solid var(--border-light)',
+              }}>
+                {a}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* ── Section 6: Media variation ── */}
-      <Card>
-        <SectionTitle>Variación por tipo de medio</SectionTitle>
-        <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-          {signal.mediaVariation.map((item) => (
-            <MediaVariationCard key={item.label} item={item} />
-          ))}
-        </div>
-        <MediaVariationChart data={signal.mediaVariation} />
-      </Card>
-
-      {/* ── Section 7: Keyword cloud ── */}
-      <SignalKeywords keywords={signal.keywords} />
-
-      {/* ── Section 8: Alert history ── */}
-      <AlertHistorySection alerts={signal.alertHistory} />
-
-      {/* ── Section 9: News table ── */}
-      <SignalNewsTable news={signal.recentNews} />
+      {/* Body */}
+      <div style={{ padding: 28 }}>
+        {signal.status === 'ready' ? (
+          <ReadyPlaceholder />
+        ) : signal.status === 'warming_up' ? (
+          <WarmingUpCard />
+        ) : signal.status === 'error' ? (
+          <ErrorCard />
+        ) : (
+          <ArchivedCard />
+        )}
+      </div>
     </div>
+  );
+}
+
+// ── Body states ──────────────────────────────────────────────────────────────
+
+function ReadyPlaceholder() {
+  return (
+    <div style={{
+      maxWidth: 640, margin: '24px auto',
+      background: 'var(--bg)', border: '1px solid var(--border)',
+      borderRadius: 12, padding: '32px 28px',
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: '50%',
+        background: 'rgba(16,185,129,0.12)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        marginBottom: 14,
+      }}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#047857" strokeWidth="2.2">
+          <path d="M3 8l3 3 7-7" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </div>
+      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+        Señal activa
+      </div>
+      <p style={{
+        fontSize: 13, color: 'var(--text-secondary)',
+        lineHeight: 1.6, margin: '0 0 16px', maxWidth: 560,
+      }}>
+        Las métricas detalladas — menciones, alcance, sentimiento, encuadres narrativos, gráficos y noticias recientes — llegarán aquí en cuanto los procesos de análisis las calculen.
+      </p>
+      <ul style={{
+        listStyle: 'none', padding: 0, margin: 0,
+        display: 'flex', flexDirection: 'column', gap: 8,
+        fontSize: 12, color: 'var(--text-tertiary)',
+      }}>
+        <Bullet>KPIs en vivo (menciones hoy, alcance, sentimiento, fuentes activas)</Bullet>
+        <Bullet>Gráficos de volumen y evolución del sentimiento</Bullet>
+        <Bullet>Encuadres narrativos dominantes y palabras emergentes</Bullet>
+        <Bullet>Últimas noticias relacionadas y distribución por medio</Bullet>
+      </ul>
+      <p style={{
+        fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.6,
+        margin: '16px 0 0', fontStyle: 'italic',
+      }}>
+        La señal ya recibe datos; la vista detallada se activa cuando el backend haya acumulado suficiente historial.
+      </p>
+    </div>
+  );
+}
+
+function WarmingUpCard() {
+  return (
+    <div style={{
+      maxWidth: 540, margin: '48px auto', textAlign: 'center',
+      background: 'var(--bg)', border: '1px solid var(--border)',
+      borderRadius: 14, padding: '44px 36px',
+    }}>
+      <div style={{ fontSize: 40, marginBottom: 16 }}>⏳</div>
+      <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>
+        Calentando datos
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0 }}>
+        Estamos procesando las primeras noticias para esta señal. Este proceso tarda entre 12 y 48 horas la primera vez.
+      </p>
+    </div>
+  );
+}
+
+function ErrorCard() {
+  return (
+    <div style={{
+      maxWidth: 540, margin: '48px auto', textAlign: 'center',
+      background: 'var(--bg)', border: '1px solid #FCA5A5',
+      borderRadius: 14, padding: '36px 28px',
+    }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: '#991B1B', marginBottom: 6 }}>
+        Error al procesar la señal
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
+        Contacta con soporte para revisar el procesamiento de esta señal.
+      </p>
+    </div>
+  );
+}
+
+function ArchivedCard() {
+  return (
+    <div style={{
+      maxWidth: 540, margin: '48px auto', textAlign: 'center',
+      background: 'var(--bg)', border: '1px solid var(--border)',
+      borderRadius: 14, padding: '36px 28px',
+    }}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+        Señal archivada
+      </div>
+      <p style={{ fontSize: 13, color: 'var(--text-tertiary)', lineHeight: 1.6, margin: 0 }}>
+        Esta señal ya no está activa. Restáurala para volver a recibir datos.
+      </p>
+    </div>
+  );
+}
+
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <li style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+      <span style={{
+        width: 4, height: 4, borderRadius: '50%',
+        background: 'var(--text-tertiary)',
+        marginTop: 7, flexShrink: 0,
+      }} />
+      <span>{children}</span>
+    </li>
   );
 }

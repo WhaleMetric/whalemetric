@@ -1,19 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { SignalRecord, SignalCategory } from '@/lib/types/signals';
 import {
-  Signal,
-  SignalCategory,
-  SIGNALS,
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
-} from '@/lib/mock/signals';
+  SIGNAL_CATEGORY_LABELS,
+  SIGNAL_CATEGORY_ORDER,
+} from '@/lib/types/signals';
 
 interface Props {
+  signals: SignalRecord[];
   selectedId: string | null;
-  favorites: Set<string>;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, current: boolean) => void;
+  onCreate?: () => void;
 }
 
 // ── Icons ──────────────────────────────────────────────────────────────
@@ -125,48 +125,14 @@ const CATEGORY_ICONS: Record<SignalCategory, React.ReactNode> = {
   zona_geografica:     <IconZona />,
 };
 
-// ── Alert pulse dot ────────────────────────────────────────────────────
+// ── Status dots ────────────────────────────────────────────────────────
 
-function AlertDot() {
-  return (
-    <span
-      style={{
-        position: 'relative',
-        display: 'inline-block',
-        width: 8,
-        height: 8,
-        flexShrink: 0,
-      }}
-    >
-      <span
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          background: '#EF4444',
-          animation: 'signal-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite',
-          opacity: 0.7,
-        }}
-      />
-      <span
-        style={{
-          position: 'absolute',
-          inset: 1,
-          borderRadius: '50%',
-          background: '#EF4444',
-        }}
-      />
-    </span>
-  );
-}
-
-function InactiveDot() {
+function ReadyDot() {
   return (
     <span
       style={{
         display: 'inline-block',
-        width: 6,
-        height: 6,
+        width: 6, height: 6,
         borderRadius: '50%',
         background: '#3B82F6',
         flexShrink: 0,
@@ -176,7 +142,23 @@ function InactiveDot() {
   );
 }
 
-// ── Star icon ─────────────────────────────────────────────────────────
+function WarmingDot() {
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        width: 6, height: 6,
+        borderRadius: '50%',
+        background: 'var(--border)',
+        flexShrink: 0,
+        marginTop: 1,
+      }}
+      title="Calentando datos"
+    />
+  );
+}
+
+// ── Star ───────────────────────────────────────────────────────────────
 
 function StarIcon({ filled }: { filled: boolean }) {
   return (
@@ -191,12 +173,8 @@ function StarIcon({ filled }: { filled: boolean }) {
 function Chevron({ open }: { open: boolean }) {
   return (
     <svg
-      width="12"
-      height="12"
-      viewBox="0 0 16 16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
+      width="12" height="12" viewBox="0 0 16 16"
+      fill="none" stroke="currentColor" strokeWidth="2"
       style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.18s' }}
     >
       <path d="M4 6l4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
@@ -207,14 +185,14 @@ function Chevron({ open }: { open: boolean }) {
 // ── Signal row ─────────────────────────────────────────────────────────
 
 interface SignalRowProps {
-  signal: Signal;
+  signal: SignalRecord;
   isSelected: boolean;
-  isFavorite: boolean;
   onSelect: () => void;
   onToggleFavorite: (e: React.MouseEvent) => void;
 }
 
-function SignalRow({ signal, isSelected, isFavorite, onSelect, onToggleFavorite }: SignalRowProps) {
+function SignalRow({ signal, isSelected, onSelect, onToggleFavorite }: SignalRowProps) {
+  const isReady = signal.status === 'ready';
   return (
     <div
       onClick={onSelect}
@@ -235,18 +213,16 @@ function SignalRow({ signal, isSelected, isFavorite, onSelect, onToggleFavorite 
         if (!isSelected) (e.currentTarget as HTMLElement).style.background = 'transparent';
       }}
     >
-      {/* status dot */}
       <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        {signal.hasAlert ? <AlertDot /> : <InactiveDot />}
+        {isReady ? <ReadyDot /> : <WarmingDot />}
       </span>
 
-      {/* name */}
       <span
         style={{
           flex: 1,
           fontSize: 13,
           fontWeight: isSelected ? 600 : 400,
-          color: signal.isInactive ? 'var(--text-tertiary)' : 'var(--text-primary)',
+          color: isReady ? 'var(--text-primary)' : 'var(--text-tertiary)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -255,19 +231,6 @@ function SignalRow({ signal, isSelected, isFavorite, onSelect, onToggleFavorite 
         {signal.name}
       </span>
 
-      {/* mentions count */}
-      <span
-        style={{
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          fontSize: 11,
-          color: signal.isInactive ? 'var(--text-tertiary)' : 'var(--text-secondary)',
-          flexShrink: 0,
-        }}
-      >
-        {signal.mentionsToday.toString().padStart(4, '\u2007')}
-      </span>
-
-      {/* star */}
       <button
         onClick={onToggleFavorite}
         style={{
@@ -279,14 +242,14 @@ function SignalRow({ signal, isSelected, isFavorite, onSelect, onToggleFavorite 
           display: 'flex',
           alignItems: 'center',
           flexShrink: 0,
-          opacity: isFavorite ? 1 : 0.4,
+          opacity: signal.is_favorite ? 1 : 0.4,
           transition: 'opacity 0.15s',
         }}
         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = '1'; }}
-        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = isFavorite ? '1' : '0.4'; }}
-        title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = signal.is_favorite ? '1' : '0.4'; }}
+        title={signal.is_favorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
       >
-        <StarIcon filled={isFavorite} />
+        <StarIcon filled={signal.is_favorite} />
       </button>
     </div>
   );
@@ -296,18 +259,17 @@ function SignalRow({ signal, isSelected, isFavorite, onSelect, onToggleFavorite 
 
 interface AccordionProps {
   category: SignalCategory;
-  signals: Signal[];
+  signals: SignalRecord[];
   isOpen: boolean;
   onToggle: () => void;
   selectedId: string | null;
-  favorites: Set<string>;
   onSelect: (id: string) => void;
-  onToggleFavorite: (id: string) => void;
+  onToggleFavorite: (id: string, current: boolean) => void;
 }
 
 function CategoryAccordion({
   category, signals, isOpen, onToggle,
-  selectedId, favorites, onSelect, onToggleFavorite,
+  selectedId, onSelect, onToggleFavorite,
 }: AccordionProps) {
   const isEmpty = signals.length === 0;
 
@@ -332,7 +294,7 @@ function CategoryAccordion({
           {CATEGORY_ICONS[category]}
         </span>
         <span style={{ flex: 1, fontSize: 12, fontWeight: 600, letterSpacing: '0.02em' }}>
-          {CATEGORY_LABELS[category]}
+          {SIGNAL_CATEGORY_LABELS[category]}
         </span>
         {!isEmpty && (
           <span
@@ -372,9 +334,8 @@ function CategoryAccordion({
                 key={sig.id}
                 signal={sig}
                 isSelected={selectedId === sig.id}
-                isFavorite={favorites.has(sig.id)}
                 onSelect={() => onSelect(sig.id)}
-                onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id); }}
+                onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id, sig.is_favorite); }}
               />
             ))
           )}
@@ -386,13 +347,31 @@ function CategoryAccordion({
 
 // ── Main sidebar ───────────────────────────────────────────────────────
 
-export default function SignalsSidebar({ selectedId, favorites, onSelect, onToggleFavorite }: Props) {
+export default function SignalsSidebar({
+  signals, selectedId, onSelect, onToggleFavorite, onCreate,
+}: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState('');
+
+  const q = search.toLowerCase();
+  const filtered = useMemo(
+    () => signals.filter((s) => !q || s.name.toLowerCase().includes(q)
+      || (s.aliases ?? []).some((a) => a.toLowerCase().includes(q))),
+    [signals, q],
+  );
+
+  // Default-open: only categories with 1+ signal in the filtered set.
   const [openCategories, setOpenCategories] = useState<Set<SignalCategory>>(
     () => new Set(
-      CATEGORY_ORDER.filter((cat) => SIGNALS.some((s) => s.category === cat)),
+      SIGNAL_CATEGORY_ORDER.filter((cat) => signals.some((s) => s.type === cat)),
     ),
   );
+
+  // Expand any category that has search matches while a query is active.
+  const effectiveOpen = (cat: SignalCategory): boolean => {
+    if (q) return filtered.some((s) => s.type === cat);
+    return openCategories.has(cat);
+  };
 
   const toggleCategory = (cat: SignalCategory) => {
     setOpenCategories((prev) => {
@@ -403,14 +382,12 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
     });
   };
 
-  const q = search.toLowerCase();
-  const filtered = SIGNALS.filter(
-    (s) => !q || s.name.toLowerCase().includes(q),
-  );
+  const favoriteSignals = filtered.filter((s) => s.is_favorite);
 
-  const favoriteSignals = SIGNALS.filter(
-    (s) => favorites.has(s.id) && (!q || s.name.toLowerCase().includes(q)),
-  );
+  const handleCreate = () => {
+    if (onCreate) onCreate();
+    else router.push('/senales/nueva');
+  };
 
   return (
     <div
@@ -425,7 +402,7 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
         overflow: 'hidden',
       }}
     >
-      {/* ── Header ── */}
+      {/* Header */}
       <div
         style={{
           padding: '18px 14px 12px',
@@ -443,15 +420,10 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
         >
           Señales
         </div>
-        {/* search */}
         <div style={{ position: 'relative' }}>
           <svg
-            width="13"
-            height="13"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="var(--text-tertiary)"
-            strokeWidth="1.8"
+            width="13" height="13" viewBox="0 0 16 16"
+            fill="none" stroke="var(--text-tertiary)" strokeWidth="1.8"
             style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)' }}
           >
             <circle cx="7" cy="7" r="4.5" />
@@ -478,9 +450,9 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
         </div>
       </div>
 
-      {/* ── Scrollable content ── */}
+      {/* Scrollable content */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
-        {/* Favorites section */}
+        {/* Favorites */}
         {favoriteSignals.length > 0 && (
           <div style={{ paddingTop: 8 }}>
             <div
@@ -500,30 +472,27 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
                 key={sig.id}
                 signal={sig}
                 isSelected={selectedId === sig.id}
-                isFavorite
                 onSelect={() => onSelect(sig.id)}
-                onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id); }}
+                onToggleFavorite={(e) => { e.stopPropagation(); onToggleFavorite(sig.id, sig.is_favorite); }}
               />
             ))}
-            <div
-              style={{ height: 1, background: 'var(--border-light)', margin: '8px 0' }}
-            />
+            <div style={{ height: 1, background: 'var(--border-light)', margin: '8px 0' }} />
           </div>
         )}
 
-        {/* Category accordions */}
+        {/* Categories */}
         <div style={{ paddingTop: favoriteSignals.length ? 0 : 8, paddingBottom: 64 }}>
-          {CATEGORY_ORDER.map((cat) => {
-            const sigs = filtered.filter((s) => s.category === cat);
+          {SIGNAL_CATEGORY_ORDER.map((cat) => {
+            const sigs = filtered.filter((s) => s.type === cat);
+            if (sigs.length === 0 && !openCategories.has(cat)) return null;
             return (
               <CategoryAccordion
                 key={cat}
                 category={cat}
                 signals={sigs}
-                isOpen={openCategories.has(cat)}
+                isOpen={effectiveOpen(cat)}
                 onToggle={() => toggleCategory(cat)}
                 selectedId={selectedId}
-                favorites={favorites}
                 onSelect={onSelect}
                 onToggleFavorite={onToggleFavorite}
               />
@@ -532,7 +501,7 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
         </div>
       </div>
 
-      {/* ── Nueva señal CTA ── */}
+      {/* Nueva señal CTA */}
       <div
         style={{
           padding: '12px 14px',
@@ -541,6 +510,7 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
         }}
       >
         <button
+          onClick={handleCreate}
           style={{
             width: '100%',
             background: 'var(--accent)',
@@ -566,13 +536,6 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
           Nueva señal
         </button>
       </div>
-
-      {/* pulse animation */}
-      <style>{`
-        @keyframes signal-ping {
-          75%, 100% { transform: scale(2); opacity: 0; }
-        }
-      `}</style>
     </div>
   );
 }
