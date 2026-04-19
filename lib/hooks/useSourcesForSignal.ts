@@ -15,6 +15,7 @@ export interface SourceRecord {
   language_code: string | null;
   icon_url: string | null;
   news_count: number;
+  is_top_source: boolean;
 }
 
 interface RawSourceRow {
@@ -25,6 +26,7 @@ interface RawSourceRow {
   country_code: string | null;
   language_code: string | null;
   icon_url: string | null;
+  is_top_source: boolean | null;
   news_count: { count: number }[] | number | null;
 }
 
@@ -46,6 +48,7 @@ export function useSourcesForSignal() {
       .from('sources')
       .select(`
         id, name, type, scope, country_code, language_code, icon_url,
+        is_top_source,
         news_count:news(count)
       `);
     if (err) {
@@ -64,8 +67,9 @@ export function useSourcesForSignal() {
       language_code: r.language_code,
       icon_url: r.icon_url,
       news_count: toCount(r.news_count),
+      is_top_source: !!r.is_top_source,
     }));
-    mapped.sort((a, b) => b.news_count - a.news_count);
+    mapped.sort((a, b) => a.name.localeCompare(b.name));
     setError(null);
     setSources(mapped);
     setLoading(false);

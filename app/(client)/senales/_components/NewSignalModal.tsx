@@ -5,8 +5,6 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/browser';
 import type { SignalCategory } from '@/lib/types/signals';
-import { suggestAliases } from '@/lib/signal-aliases-mock';
-import { SOURCE_TYPES, type SourceType } from '@/lib/signal-constants';
 import { useSourcesForSignal } from '@/lib/hooks/useSourcesForSignal';
 import { SignalTypeSelector } from './SignalTypeSelector';
 import { AliasesInput, type AliasChip } from './AliasesInput';
@@ -18,6 +16,19 @@ interface Props {
   onCreated?: (id: string) => void;
 }
 
+// Types whose matching benefits from fulltext fallback by default.
+const FULLTEXT_DEFAULT_TRUE: SignalCategory[] = [
+  'tema',
+  'campana_iniciativa',
+  'normativa',
+  'evento',
+];
+
+function defaultFulltextFor(type: SignalCategory | null): boolean {
+  if (!type) return false;
+  return FULLTEXT_DEFAULT_TRUE.includes(type);
+}
+
 export function NewSignalModal({ onClose, onCreated }: Props) {
   const router = useRouter();
   const nameRef = useRef<HTMLInputElement>(null);
@@ -27,99 +38,24 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
   const [type, setType]           = useState<SignalCategory | null>(null);
   const [description, setDesc]    = useState('');
   const [aliases, setAliases]     = useState<AliasChip[]>([]);
-  const [generating, setGenerating] = useState(false);
-  const [regenerateHint, setRegenerateHint] = useState<{ onConfirm: () => void; onDismiss: () => void } | null>(null);
-  const [lastGeneratedForName, setLastGeneratedForName] = useState<string>('');
-
-  const [countries, setCountries] = useState<string[]>([]);
-  const [languages, setLanguages] = useState<string[]>([]);
-  const [sourceTypes, setSourceTypes] = useState<SourceType[]>([...SOURCE_TYPES]);
 
   const { sources, loading: sourcesLoading, error: sourcesError } = useSourcesForSignal();
   const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
 
-  const [saving, setSaving] = useState(false);
+  const [useFulltext, setUseFulltext] = useState<boolean>(false);
+  const [fulltextTouched, setFulltextTouched] = useState(false);
+
+  const [saving, setSaving]     = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  // ── Focus + Esc ────────────────────────────────────────────────────────────
-  useEffect(() => { nameRef.current?.focus(); }, []);
-
+  // Sync fulltext default when the type changes, unless the user manually toggled it.
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') attemptClose();
-    };
-    window.addEventListener('keydown', down);
-    return () => window.removeEventListener('keydown', down);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name, aliases.length, description]);
+    if (fulltextTouched) return;
+    setUseFulltext(defaultFulltextFor(type));
+  }, [type, fulltextTouched]);
 
-  const hasUnsavedChanges = name.trim().length >= 3 || aliases.length > 0 || description.trim().length > 0;
-
-  const attemptClose = () => {
-    if (hasUnsavedChanges) {
-      if (!window.confirm('Tienes cambios sin guardar. ¿Cerrar sin crear la señal?')) return;
-    }
-    onClose();
-  };
-
-  // ── Auto-generate aliases on name blur ─────────────────────────────────────
-
-  const runAutoGeneration = async () => {
-    if (!type) return; // type is required for rules
-    setGenerating(true);
-    const trimmed = name.trim();
-    // Simulated latency
-    const ms = 800 + Math.floor(Math.random() * 700);
-    await new Promise((r) => setTimeout(r, ms));
-    const generated = suggestAliases(trimmed, type);
-    const existingManual = aliases.filter((a) => a.source === 'manual');
-    const next: AliasChip[] = [
-      ...existingManual,
-      ...generated.map<AliasChip>((v) => ({ value: v, source: 'auto' })),
-    ];
-    // Dedup
-    const seen = new Set<string>();
-    const deduped = next.filter((c) => {
-      const k = c.value.toLowerCase();
-      if (seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-    setAliases(deduped);
-    setLastGeneratedForName(trimmed);
-    setGenerating(false);
-  };
-
-  const handleNameBlur = () => {
-    const trimmed = name.trim();
-    if (trimmed.length < 3) return;
-    if (!type) return;
-    if (trimmed === lastGeneratedForName) return;
-    const hasManual = aliases.some((a) => a.source === 'manual');
-    const hasAutoFromPrevious = aliases.some((a) => a.source === 'auto');
-
-    if (hasManual && !hasAutoFromPrevious) {
-      // Respect manual work — do not run auto-generation silently.
-      return;
-    }
-
-    if (hasAutoFromPrevious) {
-      // Ask before regenerating.
-      setRegenerateHint({
-        onConfirm: () => {
-          setRegenerateHint(null);
-          // Drop previous auto aliases then generate.
-          setAliases((prev) => prev.filter((a) => a.source !== 'auto'));
-          void runAutoGeneration();
-        },
-        onDismiss: () => setRegenerateHint(null),
-      });
-      return;
-    }
-
-    void runAutoGeneration();
-  };
+  useEffect(() => { nameRef.current?.focus(); }, []);
 
   // ── Validation ─────────────────────────────────────────────────────────────
 
@@ -144,32 +80,31 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
     return undefined;
   }, [aliases, trimmedName]);
 
-  const sourceTypeError = sourceTypes.length === 0 ? 'Marca al menos un tipo de medio' : undefined;
-  const sourcesError_empty = selectedSourceIds.length === 0 ? true : false;
+  const noSelection = selectedSourceIds.length === 0;
 
-  const hasAnyError = !!(nameError || typeError || aliasError || sourceTypeError || sourcesError_empty);
+  const hasAnyError = !!(nameError || typeError || aliasError || noSelection);
   const canSubmit = !hasAnyError && !saving;
 
-  // ── Filtered sources (same logic as selector, for save-time math) ──────────
+  // ── Esc with unsaved-changes guard ─────────────────────────────────────────
 
-  const filteredSources = useMemo(() => {
-    return sources.filter((s) => {
-      if (countries.length > 0) {
-        const code = s.country_code ?? '';
-        const isIntMatch = countries.includes('INT')
-          && (s.scope === 'international' || code === 'INT' || code === '');
-        const isCountryMatch = countries.some((c) => c !== 'INT' && c === code);
-        if (!isIntMatch && !isCountryMatch) return false;
-      }
-      if (languages.length > 0) {
-        if (!s.language_code || !languages.includes(s.language_code)) return false;
-      }
-      if (sourceTypes.length > 0) {
-        if (!sourceTypes.includes(s.type as SourceType)) return false;
-      }
-      return true;
-    });
-  }, [sources, countries, languages, sourceTypes]);
+  const hasUnsavedChanges =
+    trimmedName.length >= 3 || aliases.length > 0 || description.trim().length > 0;
+
+  const attemptClose = () => {
+    if (hasUnsavedChanges) {
+      if (!window.confirm('Tienes cambios sin guardar. ¿Cerrar sin crear la señal?')) return;
+    }
+    onClose();
+  };
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') attemptClose();
+    };
+    window.addEventListener('keydown', down);
+    return () => window.removeEventListener('keydown', down);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasUnsavedChanges]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
 
@@ -184,35 +119,42 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
       const userId = authData.user?.id;
       if (!userId) throw new Error('No autenticado');
 
-      const filters: Record<string, unknown> = {};
-      if (countries.length > 0) filters.countries = countries;
-      if (languages.length > 0) filters.languages = languages;
-      if (sourceTypes.length < SOURCE_TYPES.length) filters.source_types = sourceTypes;
+      // Persistence rule: save source_ids only if the selection differs from
+      // the set of default top sources.
+      const selectedSorted  = [...selectedSourceIds].sort();
+      const defaultTopSorted = sources
+        .filter((s) => s.is_top_source)
+        .map((s) => s.id)
+        .sort();
 
-      const allFilteredIds = new Set(filteredSources.map((s) => s.id));
-      const selectedInFiltered = selectedSourceIds.filter((id) => allFilteredIds.has(id));
-      const hasSelectedSubset =
-        selectedInFiltered.length > 0 &&
-        selectedInFiltered.length < allFilteredIds.size;
-      if (hasSelectedSubset) {
-        filters.include_source_ids = selectedInFiltered;
+      const filters: Record<string, unknown> = {};
+      const differsFromTop =
+        selectedSorted.length !== defaultTopSorted.length
+        || selectedSorted.some((id, i) => id !== defaultTopSorted[i]);
+      if (differsFromTop) {
+        filters.source_ids = selectedSourceIds;
       }
 
       const aliasValues = aliases
         .map((a) => a.value.trim())
         .filter(Boolean);
 
+      const payload: Record<string, unknown> = {
+        user_id: userId,
+        name: trimmedName,
+        type,
+        aliases: aliasValues,
+        description: description.trim() || null,
+        filters,
+        status: 'warming_up',
+      };
+      // Only send use_fulltext_fallback if the user explicitly toggled it;
+      // otherwise let the DB trigger set the default based on type.
+      if (fulltextTouched) payload.use_fulltext_fallback = useFulltext;
+
       const { data, error } = await supabase
         .from('signals')
-        .insert({
-          user_id: userId,
-          name: trimmedName,
-          type,
-          aliases: aliasValues,
-          description: description.trim() || null,
-          filters,
-          status: 'warming_up',
-        })
+        .insert(payload)
         .select('id')
         .single();
 
@@ -283,41 +225,26 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
 
         {/* Body */}
         <div style={{ padding: '18px 24px', overflowY: 'auto', flex: 1 }}>
-          {/* Nombre */}
-          <Field label="Nombre" required error={submitted ? nameError : undefined}>
-            <input
-              ref={nameRef}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onBlur={handleNameBlur}
-              maxLength={60}
-              placeholder="Ej: BBVA, Pedro Sánchez, Transición energética"
-              style={inputStyle(!!(submitted && nameError))}
-            />
-          </Field>
-
-          {/* Tipo */}
-          <Field label="Tipo" required error={submitted ? typeError : undefined}>
-            <SignalTypeSelector
-              value={type}
-              onChange={setType}
-              hasError={!!(submitted && typeError)}
-            />
-          </Field>
-
-          {/* Aliases */}
-          <Field
-            label="Aliases y variantes"
-            error={aliasError}
-          >
-            <AliasesInput
-              chips={aliases}
-              onChange={(next) => setAliases(next)}
-              generating={generating}
-              regenerateHint={regenerateHint}
-              error={aliasError}
-            />
-          </Field>
+          {/* Nombre + Tipo (row) */}
+          <div className="new-signal-name-type">
+            <Field label="Nombre" required error={submitted ? nameError : undefined} className="name-col">
+              <input
+                ref={nameRef}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                maxLength={60}
+                placeholder="Ej: BBVA, Pedro Sánchez, Transición energética"
+                style={inputStyle(!!(submitted && nameError))}
+              />
+            </Field>
+            <Field label="Tipo" required error={submitted ? typeError : undefined} className="type-col">
+              <SignalTypeSelector
+                value={type}
+                onChange={setType}
+                hasError={!!(submitted && typeError)}
+              />
+            </Field>
+          </div>
 
           {/* Descripción */}
           <Field label="Descripción">
@@ -325,7 +252,7 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
               value={description}
               onChange={(e) => setDesc(e.target.value.slice(0, 200))}
               placeholder="Contexto interno. No afecta al matching."
-              rows={3}
+              rows={2}
               style={{
                 width: '100%', boxSizing: 'border-box',
                 padding: '9px 12px', fontSize: 13,
@@ -339,36 +266,67 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
             </div>
           </Field>
 
-          {/* Sources section */}
-          <div style={{ borderTop: '1px solid var(--border-light)', paddingTop: 14, marginTop: 4 }}>
+          {/* Aliases */}
+          <Field label="Aliases y variantes" error={aliasError}>
+            <AliasesInput
+              chips={aliases}
+              onChange={setAliases}
+              name={name}
+              type={type}
+              error={aliasError}
+            />
+          </Field>
+
+          {/* Advanced */}
+          <AdvancedSection defaultOpen>
             <SourcesSelector
               sources={sources}
               loading={sourcesLoading}
               error={sourcesError}
-              countries={countries}
-              languages={languages}
-              sourceTypes={sourceTypes}
               selectedIds={selectedSourceIds}
               onSelectedChange={setSelectedSourceIds}
-              error_noSelection={submitted && sourcesError_empty}
+              signalName={trimmedName}
+              signalType={type}
+              signalAliases={aliases.map((a) => a.value)}
+              error_noSelection={submitted && noSelection}
             />
-          </div>
 
-          {/* Advanced */}
-          <div style={{ marginTop: 18 }}>
-            <AdvancedSection
-              countries={countries}
-              languages={languages}
-              sourceTypes={sourceTypes}
-              onCountriesChange={setCountries}
-              onLanguagesChange={setLanguages}
-              onSourceTypesChange={setSourceTypes}
-            />
-          </div>
-
-          {submitted && sourceTypeError && (
-            <p style={{ margin: '10px 0 0', fontSize: 12, color: '#EF4444' }}>{sourceTypeError}</p>
-          )}
+            {/* Matching */}
+            <div>
+              <div style={{
+                fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+                marginBottom: 6,
+              }}>
+                Matching
+              </div>
+              <label style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: '10px 12px', borderRadius: 7,
+                background: 'var(--bg-muted)', cursor: 'pointer',
+              }}>
+                <input
+                  type="checkbox"
+                  checked={useFulltext}
+                  onChange={(e) => {
+                    setFulltextTouched(true);
+                    setUseFulltext(e.target.checked);
+                  }}
+                  style={{ accentColor: 'var(--accent)', marginTop: 2 }}
+                />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
+                    Activar fulltext fallback
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 2 }}>
+                    Permite que la señal se active también por coincidencia textual cuando el matching exacto no encuentra menciones.
+                    {!fulltextTouched && type && (
+                      <> Valor por defecto según tipo: <b>{defaultFulltextFor(type) ? 'activado' : 'desactivado'}</b>.</>
+                    )}
+                  </div>
+                </div>
+              </label>
+            </div>
+          </AdvancedSection>
 
           {serverError && (
             <div style={{
@@ -414,6 +372,22 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
           </button>
         </div>
       </div>
+
+      {/* Scoped layout rules — Name/Type row collapses to one column on narrow viewports */}
+      <style>{`
+        .new-signal-name-type {
+          display: flex;
+          gap: 12px;
+          align-items: flex-start;
+          margin-bottom: 14px;
+        }
+        .new-signal-name-type .name-col { flex: 1; min-width: 0; }
+        .new-signal-name-type .type-col { width: 240px; flex-shrink: 0; }
+        @media (max-width: 640px) {
+          .new-signal-name-type { flex-direction: column; }
+          .new-signal-name-type .type-col { width: 100%; }
+        }
+      `}</style>
     </div>
   );
 }
@@ -421,15 +395,16 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function Field({
-  label, required, error, children,
+  label, required, error, children, className,
 }: {
   label: string;
   required?: boolean;
   error?: string;
   children: React.ReactNode;
+  className?: string;
 }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div className={className} style={{ marginBottom: className ? 0 : 14 }}>
       <label style={{
         fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)',
         display: 'block', marginBottom: 6,
