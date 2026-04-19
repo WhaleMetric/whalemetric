@@ -260,6 +260,23 @@ export default function FlowsPage() {
             <LegendDot color="#D1D5DB" label="Inactivo" />
           </div>
           <button
+            onClick={() => {
+              console.log('[WM] Calling /api/admin/rss/health ...');
+              fetch('/api/admin/rss/health')
+                .then((r) => r.json())
+                .then((d) => console.log('[WM] health result:', JSON.stringify(d, null, 2)))
+                .catch((e) => console.error('[WM] health fetch error:', e));
+            }}
+            style={{
+              padding: '6px 12px', fontSize: 12, cursor: 'pointer',
+              border: '1px solid #FCD34D', borderRadius: 8,
+              background: '#FFFBEB', color: '#92400E',
+            }}
+          >
+            🩺 Health
+          </button>
+
+          <button
             onClick={fetchFlows}
             disabled={loading}
             style={{
