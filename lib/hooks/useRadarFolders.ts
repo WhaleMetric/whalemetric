@@ -21,7 +21,9 @@ export function useRadarFolders() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    // Initial fetch. setState happens after an await, so not a cascading render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refresh();
   }, [refresh]);
 
   const createFolder = async (
@@ -30,11 +32,14 @@ export function useRadarFolders() {
     color: string | null,
   ): Promise<RadarFolder> => {
     const supabase = createClient();
+    const { data: auth } = await supabase.auth.getUser();
+    const userId = auth.user?.id;
+    if (!userId) throw new Error('No autenticado');
     const real = folders.filter((f) => !f.is_mock);
     const maxPos = real.reduce((m, f) => Math.max(m, f.position), 0);
     const { data, error } = await supabase
       .from('radar_folders')
-      .insert({ name, icon, color, position: maxPos + 1 })
+      .insert({ user_id: userId, name, icon, color, position: maxPos + 1 })
       .select()
       .single();
     if (error) throw error;

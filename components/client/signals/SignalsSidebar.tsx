@@ -168,7 +168,7 @@ function InactiveDot() {
         width: 6,
         height: 6,
         borderRadius: '50%',
-        background: 'var(--border)',
+        background: '#3B82F6',
         flexShrink: 0,
         marginTop: 1,
       }}
@@ -389,7 +389,9 @@ function CategoryAccordion({
 export default function SignalsSidebar({ selectedId, favorites, onSelect, onToggleFavorite }: Props) {
   const [search, setSearch] = useState('');
   const [openCategories, setOpenCategories] = useState<Set<SignalCategory>>(
-    new Set(CATEGORY_ORDER),
+    () => new Set(
+      CATEGORY_ORDER.filter((cat) => SIGNALS.some((s) => s.category === cat)),
+    ),
   );
 
   const toggleCategory = (cat: SignalCategory) => {

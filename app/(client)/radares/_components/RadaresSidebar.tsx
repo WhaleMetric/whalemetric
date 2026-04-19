@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
@@ -12,19 +12,15 @@ import {
   useSortable, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  Briefcase, AlertTriangle, Target, Users, Rocket, Flag,
-  Megaphone, TrendingUp, Shield, Bookmark, Star, Zap,
-  Inbox,
-} from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import type { Radar, RadarFolder } from '@/lib/types/radares';
 import { formulaToText } from '@/lib/radar-formula';
 import { MOCK_FOLDERS } from '@/lib/mock/radares';
+import { getFolderIcon } from './FolderModal';
 
-const ICON_MAP: Record<string, React.ElementType> = {
-  Briefcase, AlertTriangle, Target, Users, Rocket, Flag,
-  Megaphone, TrendingUp, Shield, Bookmark, Star, Zap,
-};
+function FolderIconFor({ id, size }: { id: string | null | undefined; size: number }) {
+  return createElement(getFolderIcon(id), { size });
+}
 
 const LS_KEY = 'radares:expanded-folders';
 const SIN_CARPETA_ID = '__sin_carpeta__';
@@ -293,7 +289,7 @@ export function RadaresSidebar({
           <FolderAccordionRow
             id={SIN_CARPETA_ID}
             name="Sin carpeta"
-            icon={<Inbox size={13} />}
+            icon={<Inbox size={14} />}
             iconColor="var(--text-tertiary)"
             radars={radarsNoFolder}
             expanded={effectiveExpanded(SIN_CARPETA_ID)}
@@ -366,7 +362,6 @@ function SortableFolderAccordion({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const FolderIcon = folder.icon ? (ICON_MAP[folder.icon] ?? null) : null;
 
   return (
     <div
@@ -400,16 +395,7 @@ function SortableFolderAccordion({
         onToggle={onToggle}
         hovered={hovered}
         name={folder.name}
-        icon={
-          FolderIcon ? (
-            <FolderIcon size={13} />
-          ) : (
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M2 5h12v9H2z" strokeLinejoin="round" />
-              <path d="M2 5l2-3h4l2 3" strokeLinejoin="round" />
-            </svg>
-          )
-        }
+        icon={<FolderIconFor id={folder.icon} size={14} />}
         iconColor={folder.color ?? 'var(--text-tertiary)'}
         count={searchMatches >= 0 ? searchMatches : radars.length}
         actions={

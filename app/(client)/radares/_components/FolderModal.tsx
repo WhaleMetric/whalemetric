@@ -1,39 +1,91 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Briefcase, AlertTriangle, Target, Users, Rocket, Flag, Megaphone, TrendingUp, Shield, Bookmark, Star, Zap } from 'lucide-react';
+import {
+  Folder, FolderOpen, Briefcase, Inbox, Archive,
+  Users, User, UserCheck, Heart, Handshake,
+  Building, Building2, Landmark, Factory, Store,
+  Newspaper, Radio, Tv, Mic, Camera,
+  Film, Megaphone, MessageCircle, Mail, Send,
+  Target, Crosshair, Flag, Compass, Rocket,
+  TrendingUp, Activity, BarChart3, LineChart, Globe,
+  MapPin, Map, Star, Award, Trophy,
+  type LucideIcon,
+} from 'lucide-react';
 import type { RadarFolder } from '@/lib/types/radares';
 
-const ICONS = [
-  { id: 'Briefcase',     Icon: Briefcase },
-  { id: 'AlertTriangle', Icon: AlertTriangle },
-  { id: 'Target',        Icon: Target },
-  { id: 'Users',         Icon: Users },
-  { id: 'Rocket',        Icon: Rocket },
-  { id: 'Flag',          Icon: Flag },
-  { id: 'Megaphone',     Icon: Megaphone },
-  { id: 'TrendingUp',    Icon: TrendingUp },
-  { id: 'Shield',        Icon: Shield },
-  { id: 'Bookmark',      Icon: Bookmark },
-  { id: 'Star',          Icon: Star },
-  { id: 'Zap',           Icon: Zap },
+export const FOLDER_ICONS: { id: string; Icon: LucideIcon }[] = [
+  { id: 'Folder',        Icon: Folder        },
+  { id: 'FolderOpen',    Icon: FolderOpen    },
+  { id: 'Briefcase',     Icon: Briefcase     },
+  { id: 'Inbox',         Icon: Inbox         },
+  { id: 'Archive',       Icon: Archive       },
+  { id: 'Users',         Icon: Users         },
+  { id: 'User',          Icon: User          },
+  { id: 'UserCheck',     Icon: UserCheck     },
+  { id: 'Heart',         Icon: Heart         },
+  { id: 'Handshake',     Icon: Handshake     },
+  { id: 'Building',      Icon: Building      },
+  { id: 'Building2',     Icon: Building2     },
+  { id: 'Landmark',      Icon: Landmark      },
+  { id: 'Factory',       Icon: Factory       },
+  { id: 'Store',         Icon: Store         },
+  { id: 'Newspaper',     Icon: Newspaper     },
+  { id: 'Radio',         Icon: Radio         },
+  { id: 'Tv',            Icon: Tv            },
+  { id: 'Mic',           Icon: Mic           },
+  { id: 'Camera',        Icon: Camera        },
+  { id: 'Film',          Icon: Film          },
+  { id: 'Megaphone',     Icon: Megaphone     },
+  { id: 'MessageCircle', Icon: MessageCircle },
+  { id: 'Mail',          Icon: Mail          },
+  { id: 'Send',          Icon: Send          },
+  { id: 'Target',        Icon: Target        },
+  { id: 'Crosshair',     Icon: Crosshair     },
+  { id: 'Flag',          Icon: Flag          },
+  { id: 'Compass',       Icon: Compass       },
+  { id: 'Rocket',        Icon: Rocket        },
+  { id: 'TrendingUp',    Icon: TrendingUp    },
+  { id: 'Activity',      Icon: Activity      },
+  { id: 'BarChart3',     Icon: BarChart3     },
+  { id: 'LineChart',     Icon: LineChart     },
+  { id: 'Globe',         Icon: Globe         },
+  { id: 'MapPin',        Icon: MapPin        },
+  { id: 'Map',           Icon: Map           },
+  { id: 'Star',          Icon: Star          },
+  { id: 'Award',         Icon: Award         },
+  { id: 'Trophy',        Icon: Trophy        },
 ];
 
-const COLORS = [
-  '#3B82F6', '#EF4444', '#10B981',
-  '#F59E0B', '#8B5CF6', '#EC4899', '#6B7280',
+export const FOLDER_COLORS: string[] = [
+  '#6B7280', '#9CA3AF', '#1F2937',
+  '#3B82F6', '#1D4ED8', '#60A5FA',
+  '#10B981', '#047857', '#34D399',
+  '#14B8A6', '#0EA5E9',
+  '#F59E0B', '#D97706', '#FCD34D',
+  '#EF4444', '#B91C1C',
+  '#EC4899', '#BE185D',
+  '#8B5CF6', '#6D28D9',
 ];
+
+export const DEFAULT_FOLDER_ICON = FOLDER_ICONS[0].id;
+export const DEFAULT_FOLDER_COLOR = FOLDER_COLORS[0];
+
+export function getFolderIcon(id: string | null | undefined): LucideIcon {
+  if (!id) return Folder;
+  return FOLDER_ICONS.find((i) => i.id === id)?.Icon ?? Folder;
+}
 
 interface FolderModalProps {
   folder?: RadarFolder | null;
   onClose: () => void;
-  onSave: (name: string, icon: string | null, color: string | null) => Promise<void>;
+  onSave: (name: string, icon: string, color: string) => Promise<void>;
 }
 
 export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
   const [name, setName]   = useState(folder?.name ?? '');
-  const [icon, setIcon]   = useState<string | null>(folder?.icon ?? null);
-  const [color, setColor] = useState<string | null>(folder?.color ?? COLORS[0]);
+  const [icon, setIcon]   = useState<string>(folder?.icon ?? DEFAULT_FOLDER_ICON);
+  const [color, setColor] = useState<string>(folder?.color ?? DEFAULT_FOLDER_COLOR);
   const [saving, setSaving] = useState(false);
   const [error, setError]   = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,19 +98,33 @@ export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
     return () => window.removeEventListener('keydown', down);
   }, [onClose]);
 
+  const trimmed = name.trim();
+  const nameError = trimmed.length === 0
+    ? 'El nombre es obligatorio'
+    : trimmed.length > 40
+      ? 'Máximo 40 caracteres'
+      : '';
+
   const handleSave = async () => {
-    if (!name.trim()) { setError('El nombre es obligatorio'); return; }
+    if (nameError) { setError(nameError); return; }
     setSaving(true);
     setError('');
     try {
-      await onSave(name.trim(), icon, color);
+      await onSave(trimmed, icon, color);
       onClose();
     } catch (e) {
+      const code = (e as { code?: string } | null)?.code;
       const msg = e instanceof Error ? e.message : 'Error al guardar';
-      setError(msg.includes('unique') ? 'Ya tienes una carpeta con ese nombre' : msg);
+      if (code === '23505' || /duplicate|unique/i.test(msg)) {
+        setError('Ya tienes una carpeta con ese nombre');
+      } else {
+        setError(msg);
+      }
       setSaving(false);
     }
   };
+
+  const isEdit = !!folder;
 
   return (
     <div
@@ -67,22 +133,28 @@ export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
         position: 'fixed', inset: 0, zIndex: 1000,
         background: 'rgba(0,0,0,0.4)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--bg)', borderRadius: 12,
-          padding: '24px 28px', width: 380,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.18)',
+          background: 'var(--bg)', borderRadius: 14,
+          padding: '22px 24px 20px', width: '100%', maxWidth: 460,
+          boxShadow: '0 24px 72px rgba(0,0,0,0.2)',
           border: '1px solid var(--border)',
+          maxHeight: '90vh', overflowY: 'auto',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>
-            {folder ? 'Editar carpeta' : 'Nueva carpeta'}
+            {isEdit ? 'Editar carpeta' : 'Nueva carpeta'}
           </h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}>
+          <button
+            onClick={onClose}
+            aria-label="Cerrar"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 4 }}
+          >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" />
             </svg>
@@ -90,14 +162,16 @@ export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
         </div>
 
         {/* Name */}
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Nombre</label>
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+          Nombre
+        </label>
         <input
           ref={inputRef}
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); if (error) setError(''); }}
           onKeyDown={(e) => { if (e.key === 'Enter') handleSave(); }}
-          placeholder="Nombre de la carpeta"
-          maxLength={60}
+          placeholder="Ej. Política, Competencia…"
+          maxLength={40}
           style={{
             width: '100%', boxSizing: 'border-box',
             padding: '9px 12px', fontSize: 13,
@@ -107,43 +181,75 @@ export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
             marginBottom: error ? 4 : 16,
           }}
         />
-        {error && <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 14 }}>{error}</div>}
+        {error && (
+          <div style={{ fontSize: 12, color: '#EF4444', marginBottom: 14 }}>{error}</div>
+        )}
 
-        {/* Icon */}
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Icono</label>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 18 }}>
-          {ICONS.map(({ id, Icon }) => (
-            <button
-              key={id}
-              onClick={() => setIcon(icon === id ? null : id)}
-              title={id}
-              style={{
-                width: 34, height: 34, borderRadius: 7, cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                background: icon === id ? 'var(--accent)' : 'var(--bg-muted)',
-                color: icon === id ? 'var(--bg)' : 'var(--text-secondary)',
-                border: `1px solid ${icon === id ? 'var(--accent)' : 'var(--border)'}`,
-              }}
-            >
-              <Icon size={14} />
-            </button>
-          ))}
+        {/* Icon picker — 8 × 5 */}
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          Icono
+        </label>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(8, 36px)',
+          gap: 6, marginBottom: 18,
+          justifyContent: 'start',
+        }}>
+          {FOLDER_ICONS.map(({ id, Icon }) => {
+            const selected = icon === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setIcon(id)}
+                title={id}
+                style={{
+                  width: 36, height: 36, borderRadius: 8, cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: selected ? color : 'transparent',
+                  color: selected ? '#fff' : 'var(--text-secondary)',
+                  border: `1px solid ${selected ? 'var(--accent)' : 'var(--border)'}`,
+                  transition: 'background 0.12s, border-color 0.12s',
+                }}
+              >
+                <Icon size={16} strokeWidth={selected ? 2 : 1.7} />
+              </button>
+            );
+          })}
         </div>
 
-        {/* Color */}
-        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>Color</label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              onClick={() => setColor(c)}
-              style={{
-                width: 24, height: 24, borderRadius: '50%', background: c, border: 'none',
-                cursor: 'pointer', outline: color === c ? `2px solid ${c}` : 'none',
-                outlineOffset: 2, boxSizing: 'border-box',
-              }}
-            />
-          ))}
+        {/* Color picker — 10 × 2 */}
+        <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 8 }}>
+          Color
+        </label>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(10, 28px)',
+          gap: 8, marginBottom: 22,
+          justifyContent: 'start',
+        }}>
+          {FOLDER_COLORS.map((c) => {
+            const selected = color === c;
+            return (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                title={c}
+                aria-label={`Color ${c}`}
+                aria-pressed={selected}
+                style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: c, border: 'none', padding: 0,
+                  cursor: 'pointer',
+                  boxShadow: selected
+                    ? `0 0 0 2px var(--bg), 0 0 0 4px var(--accent)`
+                    : 'none',
+                  transition: 'box-shadow 0.12s',
+                }}
+              />
+            );
+          })}
         </div>
 
         {/* Actions */}
@@ -160,15 +266,16 @@ export function FolderModal({ folder, onClose, onSave }: FolderModalProps) {
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || !!nameError}
             style={{
-              padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              padding: '8px 18px', fontSize: 13, fontWeight: 600,
+              cursor: saving || nameError ? 'not-allowed' : 'pointer',
               border: 'none', borderRadius: 7,
               background: 'var(--accent)', color: 'var(--bg)',
-              opacity: saving ? 0.7 : 1,
+              opacity: saving || nameError ? 0.6 : 1,
             }}
           >
-            {saving ? 'Guardando…' : (folder ? 'Guardar' : 'Crear')}
+            {saving ? 'Guardando…' : (isEdit ? 'Guardar' : 'Crear')}
           </button>
         </div>
       </div>

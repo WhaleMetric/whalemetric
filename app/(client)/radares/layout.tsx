@@ -8,6 +8,7 @@ import { useRadares } from '@/lib/hooks/useRadares';
 import { RadaresSidebar } from './_components/RadaresSidebar';
 import { FolderModal } from './_components/FolderModal';
 import { NewRadarModal } from './_components/NewRadarModal';
+import { ConfirmDialog } from './_components/ConfirmDialog';
 import type { RadarFolder } from '@/lib/types/radares';
 
 // Inner layout needs access to search params — wrap in Suspense at the boundary
@@ -24,6 +25,7 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
   const [showNewRadar,    setShowNewRadar]    = useState(false);
   const [showNewFolder,   setShowNewFolder]   = useState(false);
   const [editingFolder,   setEditingFolder]   = useState<RadarFolder | null>(null);
+  const [deletingFolder,  setDeletingFolder]  = useState<RadarFolder | null>(null);
 
   const [search, setSearch_] = useState(searchParams.get('q') ?? '');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,15 +53,36 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', down);
   }, []);
 
-  // Delete folder with confirmation
-  const handleDeleteFolder = async (folder: RadarFolder) => {
-    const count = folder.radars?.[0]?.count ?? 0;
-    const msg = count > 0
-      ? `Esta carpeta contiene ${count} radar${count > 1 ? 'es' : ''}. Al borrarla, los radares pasarán a "Sin carpeta". ¿Continuar?`
-      : `¿Eliminar la carpeta "${folder.name}"?`;
-    if (!window.confirm(msg)) return;
-    await deleteFolder(folder.id);
-    toast.success('Carpeta eliminada');
+  // Radar counts per folder (live, from loaded radars — not the cached folder.radars.count).
+  const radarsPerFolder = (folderId: string) =>
+    radars.filter((r) => r.folder_id === folderId).length;
+
+  const handleRequestEditFolder = (folder: RadarFolder) => {
+    if (folder.is_mock) {
+      toast.info('Las carpetas de ejemplo no se pueden modificar');
+      return;
+    }
+    setEditingFolder(folder);
+  };
+
+  const handleRequestDeleteFolder = (folder: RadarFolder) => {
+    if (folder.is_mock) {
+      toast.info('Las carpetas de ejemplo no se pueden modificar');
+      return;
+    }
+    setDeletingFolder(folder);
+  };
+
+  const confirmDeleteFolder = async () => {
+    const folder = deletingFolder;
+    if (!folder) return;
+    setDeletingFolder(null);
+    try {
+      await deleteFolder(folder.id);
+      toast.success('Carpeta eliminada');
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo eliminar');
+    }
   };
 
   return (
@@ -76,8 +99,8 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
         }}
         onNewRadar={() => setShowNewRadar(true)}
         onNewFolder={() => setShowNewFolder(true)}
-        onEditFolder={(f) => setEditingFolder(f)}
-        onDeleteFolder={handleDeleteFolder}
+        onEditFolder={handleRequestEditFolder}
+        onDeleteFolder={handleRequestDeleteFolder}
         onReorderFolders={reorderFolders}
         search={search}
         onSearchChange={onSearchChange}
@@ -118,6 +141,24 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
           }}
         />
       )}
+
+      {/* Delete folder confirmation */}
+      {deletingFolder && (() => {
+        const count = radarsPerFolder(deletingFolder.id);
+        const title = count > 0 ? 'Borrar carpeta con radares' : 'Borrar carpeta';
+        const message = count > 0
+          ? `Esta carpeta contiene ${count} radar${count > 1 ? 'es' : ''}. Al borrarla, pasarán a "Sin carpeta". ¿Continuar?`
+          : `¿Borrar la carpeta "${deletingFolder.name}"?`;
+        return (
+          <ConfirmDialog
+            title={title}
+            message={message}
+            confirmLabel="Borrar"
+            onConfirm={confirmDeleteFolder}
+            onCancel={() => setDeletingFolder(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
