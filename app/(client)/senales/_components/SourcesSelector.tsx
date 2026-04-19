@@ -75,7 +75,7 @@ export function SourcesSelector({
 }: Props) {
   const [search, setSearch]       = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [countries, setCountries] = useState<string[]>([]);
+  const [countries, setCountries] = useState<string[]>(['ES']);
   const [languages, setLanguages] = useState<string[]>([]);
   const [types, setTypes]         = useState<string[]>([]);
   const [loadingAI, setLoadingAI] = useState(false);
@@ -118,7 +118,11 @@ export function SourcesSelector({
           if (!isIntMatch && !isCountryMatch) return false;
         }
         if (languages.length > 0) {
-          if (!s.language_code || !languages.includes(s.language_code)) return false;
+          // Marcar "Español" incluye también fuentes en catalán (contexto peninsular).
+          const effective = languages.includes('es')
+            ? Array.from(new Set([...languages, 'ca']))
+            : languages;
+          if (!s.language_code || !effective.includes(s.language_code)) return false;
         }
         if (types.length > 0) {
           if (!types.includes(s.type)) return false;

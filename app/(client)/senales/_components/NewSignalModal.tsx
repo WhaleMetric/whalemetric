@@ -295,36 +295,16 @@ export function NewSignalModal({ onClose, onCreated }: Props) {
             <div>
               <div style={{
                 fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
-                marginBottom: 6,
+                marginBottom: 8,
               }}>
                 Matching
               </div>
-              <label style={{
-                display: 'flex', alignItems: 'flex-start', gap: 10,
-                padding: '10px 12px', borderRadius: 7,
-                background: 'var(--bg-muted)', cursor: 'pointer',
-              }}>
-                <input
-                  type="checkbox"
-                  checked={useFulltext}
-                  onChange={(e) => {
-                    setFulltextTouched(true);
-                    setUseFulltext(e.target.checked);
-                  }}
-                  style={{ accentColor: 'var(--accent)', marginTop: 2 }}
-                />
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>
-                    Activar fulltext fallback
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-tertiary)', lineHeight: 1.5, marginTop: 2 }}>
-                    Permite que la señal se active también por coincidencia textual cuando el matching exacto no encuentra menciones.
-                    {!fulltextTouched && type && (
-                      <> Valor por defecto según tipo: <b>{defaultFulltextFor(type) ? 'activado' : 'desactivado'}</b>.</>
-                    )}
-                  </div>
-                </div>
-              </label>
+              <FulltextToggle
+                checked={useFulltext}
+                touched={fulltextTouched}
+                defaultValue={defaultFulltextFor(type)}
+                onChange={(v) => { setFulltextTouched(true); setUseFulltext(v); }}
+              />
             </div>
           </AdvancedSection>
 
@@ -428,4 +408,105 @@ function inputStyle(hasError: boolean): React.CSSProperties {
     borderRadius: 7, background: 'var(--bg-muted)',
     color: 'var(--text-primary)', outline: 'none',
   };
+}
+
+// ── Fulltext toggle (row with switch) ────────────────────────────────────────
+
+function FulltextToggle({
+  checked, touched, defaultValue, onChange,
+}: {
+  checked: boolean;
+  touched: boolean;
+  defaultValue: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onChange(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!checked); }
+      }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 14,
+        padding: '14px 16px',
+        border: `1px solid ${checked ? 'rgba(10,10,10,0.15)' : 'var(--border)'}`,
+        borderRadius: 10,
+        background: checked ? 'var(--bg-subtle)' : 'var(--bg)',
+        cursor: 'pointer',
+        transition: 'border-color 0.15s, background 0.15s',
+      }}
+      onMouseEnter={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        if (!checked) el.style.background = 'var(--bg-subtle)';
+      }}
+      onMouseLeave={(e) => {
+        const el = e.currentTarget as HTMLElement;
+        if (!checked) el.style.background = 'var(--bg)';
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 13, fontWeight: 600, color: 'var(--text-primary)',
+          marginBottom: 2,
+        }}>
+          Fulltext fallback
+          {!touched && (
+            <span style={{
+              fontSize: 10, fontWeight: 600,
+              padding: '2px 7px', borderRadius: 4,
+              background: defaultValue ? 'rgba(16,185,129,0.12)' : 'var(--bg-muted)',
+              color: defaultValue ? '#047857' : 'var(--text-tertiary)',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}>
+              {defaultValue ? 'Por defecto' : 'Por defecto off'}
+            </span>
+          )}
+        </div>
+        <div style={{
+          fontSize: 12, color: 'var(--text-tertiary)',
+          lineHeight: 1.55,
+        }}>
+          Activa la señal también cuando el matching exacto no encuentra menciones,
+          usando búsqueda textual sobre el cuerpo de la noticia.
+        </div>
+      </div>
+
+      <Switch checked={checked} />
+    </div>
+  );
+}
+
+function Switch({ checked }: { checked: boolean }) {
+  return (
+    <span
+      role="switch"
+      aria-checked={checked}
+      style={{
+        position: 'relative',
+        width: 40, height: 22,
+        flexShrink: 0,
+        borderRadius: 11,
+        background: checked ? 'var(--accent)' : 'var(--border)',
+        transition: 'background 0.18s ease',
+        display: 'inline-block',
+        boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)',
+      }}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 2,
+          left: checked ? 20 : 2,
+          width: 18, height: 18,
+          borderRadius: '50%',
+          background: '#fff',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.18), 0 1px 1px rgba(0,0,0,0.08)',
+          transition: 'left 0.2s cubic-bezier(0.25,0.46,0.45,0.94)',
+        }}
+      />
+    </span>
+  );
 }
