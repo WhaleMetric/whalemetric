@@ -5,7 +5,6 @@ import { Handle, Position, type NodeProps } from 'reactflow';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 
-// Display name overrides — takes precedence over the name stored in DB
 const DISPLAY_NAMES: Partial<Record<string, string>> = {
   scraping_web: 'Scraping noticia completa',
 };
@@ -24,7 +23,7 @@ export interface FlowNodeData {
   onToast?:    (msg: string, ok: boolean) => void;
 }
 
-// ── Category icons (inline SVG) ───────────────────────────────────────────────
+// ── Icons ─────────────────────────────────────────────────────────────────────
 
 function IconIngesta() {
   return (
@@ -64,7 +63,7 @@ const CATEGORY_ICONS = {
   generacion:    IconGeneracion,
 };
 
-// ── Status badge ──────────────────────────────────────────────────────────────
+// ── Badge + border ────────────────────────────────────────────────────────────
 
 function getBadge(enabled: boolean, status: FlowStatus) {
   if (!enabled) return { label: 'parado', bg: '#F3F4F6', color: '#9CA3AF' };
@@ -85,15 +84,7 @@ function getBorderColor(enabled: boolean, status: FlowStatus) {
 
 // ── iOS Toggle ────────────────────────────────────────────────────────────────
 
-function IOSToggle({
-  enabled,
-  loading,
-  onToggle,
-}: {
-  enabled: boolean;
-  loading?: boolean;
-  onToggle: () => void;
-}) {
+function IOSToggle({ enabled, loading, onToggle }: { enabled: boolean; loading?: boolean; onToggle: () => void }) {
   return (
     <div
       role="switch"
@@ -102,48 +93,32 @@ function IOSToggle({
       onClick={(e) => { e.stopPropagation(); if (!loading) onToggle(); }}
       onKeyDown={(e) => { if ((e.key === ' ' || e.key === 'Enter') && !loading) { e.stopPropagation(); onToggle(); } }}
       style={{
-        width: 36,
-        height: 20,
-        borderRadius: 10,
+        width: 36, height: 20, borderRadius: 10,
         background: loading ? '#9CA3AF' : enabled ? '#22C55E' : '#D1D5DB',
-        position: 'relative',
-        cursor: loading ? 'wait' : 'pointer',
-        flexShrink: 0,
-        transition: 'background 0.22s ease',
-        outline: 'none',
-        opacity: loading ? 0.7 : 1,
+        position: 'relative', cursor: loading ? 'wait' : 'pointer',
+        flexShrink: 0, transition: 'background 0.22s ease',
+        outline: 'none', opacity: loading ? 0.7 : 1,
       }}
     >
       <div style={{
-        position: 'absolute',
-        width: 16,
-        height: 16,
-        borderRadius: '50%',
-        background: '#fff',
-        top: 2,
-        left: enabled ? 18 : 2,
-        transition: 'left 0.22s ease',
-        boxShadow: '0 1px 4px rgba(0,0,0,0.22)',
+        position: 'absolute', width: 16, height: 16, borderRadius: '50%',
+        background: '#fff', top: 2, left: enabled ? 18 : 2,
+        transition: 'left 0.22s ease', boxShadow: '0 1px 4px rgba(0,0,0,0.22)',
       }} />
     </div>
   );
 }
 
-// ── Play icon ─────────────────────────────────────────────────────────────────
+// ── Interval options ──────────────────────────────────────────────────────────
 
-function PlayIcon() {
-  return (
-    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="5,3 19,12 5,21"/>
-    </svg>
-  );
-}
+const INTERVALS = ['5min', '15min', '30min', '1h', '3h', '6h', '8h', '12h', '24h'];
 
-// ── Node component ────────────────────────────────────────────────────────────
+// ── Node ──────────────────────────────────────────────────────────────────────
 
 function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
-  const [toggling, setToggling] = useState(false);
-  const [running,  setRunning]  = useState(false);
+  const [toggling,  setToggling]  = useState(false);
+  const [running,   setRunning]   = useState(false);
+  const [interval,  setInterval_] = useState('1h');
 
   const Icon        = CATEGORY_ICONS[data.category];
   const badge       = getBadge(data.enabled, data.last_status);
@@ -151,13 +126,12 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
   const displayName = DISPLAY_NAMES[data.slug] ?? data.name;
   const isRSS       = data.slug === 'rss_fetch';
 
-  // For rss_fetch: call WhaleMetric API via our internal proxy
   async function handleToggle() {
     if (isRSS) {
       setToggling(true);
       const action = data.enabled ? 'disable' : 'enable';
       try {
-        const res = await fetch(`/api/admin/rss/${action}`, { method: 'POST' });
+        const res  = await fetch(`/api/admin/rss/${action}`, { method: 'POST' });
         const json = await res.json();
         if (!json.ok) throw new Error(json.error ?? `Error ${action}`);
         data.onToggle(data.slug, !data.enabled);
@@ -168,22 +142,26 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
         setToggling(false);
       }
     } else {
-      // All other nodes: standard Supabase toggle
       data.onToggle(data.slug, !data.enabled);
     }
   }
 
   async function handleRun() {
-    setRunning(true);
-    try {
-      const res = await fetch('/api/admin/rss/run', { method: 'POST' });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error ?? 'Error ejecutando RSS');
-      data.onToast?.('RSS en ejecución', true);
-    } catch (e) {
-      data.onToast?.(e instanceof Error ? e.message : 'Error al ejecutar', false);
-    } finally {
-      setRunning(false);
+    if (isRSS) {
+      setRunning(true);
+      try {
+        const res  = await fetch('/api/admin/rss/run', { method: 'POST' });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error ?? 'Error ejecutando RSS');
+        data.onToast?.('RSS en ejecución', true);
+      } catch (e) {
+        data.onToast?.(e instanceof Error ? e.message : 'Error al ejecutar', false);
+      } finally {
+        setRunning(false);
+      }
+    } else {
+      // Visual-only for other nodes
+      console.log(`[run] ${data.slug} — interval: ${interval}`);
     }
   }
 
@@ -191,102 +169,90 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
     <div
       aria-label={displayName}
       style={{
-        width: 210,
-        background: '#fff',
-        border: `1.5px solid ${border}`,
-        borderRadius: 10,
-        padding: '10px 12px',
-        opacity: data.enabled ? 1 : 0.55,
-        boxSizing: 'border-box',
-        fontFamily: 'inherit',
+        width: 210, background: '#fff',
+        border: `1.5px solid ${border}`, borderRadius: 10,
+        padding: '10px 12px', opacity: data.enabled ? 1 : 0.55,
+        boxSizing: 'border-box', fontFamily: 'inherit',
         transition: 'opacity 0.2s, border-color 0.2s',
       }}
     >
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }}
-      />
+      <Handle type="target" position={Position.Top}
+        style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }} />
 
-      {/* Row 1: icon + badge + toggle */}
+      {/* Row 1: icon + badge + toggle (toggle only for rss_fetch) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
         <span style={{ color: '#9CA3AF', display: 'flex', flexShrink: 0 }}>
           <Icon />
         </span>
         <span style={{
-          padding: '1px 7px',
-          fontSize: 10,
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
-          borderRadius: 20,
-          fontWeight: 600,
-          background: badge.bg,
-          color: badge.color,
-          flexShrink: 0,
+          padding: '1px 7px', fontSize: 10, textTransform: 'uppercase',
+          letterSpacing: '0.04em', borderRadius: 20, fontWeight: 600,
+          background: badge.bg, color: badge.color, flexShrink: 0,
         }}>
           {badge.label}
         </span>
         <div style={{ flex: 1 }} />
-        <IOSToggle
-          enabled={data.enabled}
-          loading={toggling}
-          onToggle={handleToggle}
-        />
+        {isRSS && (
+          <IOSToggle enabled={data.enabled} loading={toggling} onToggle={handleToggle} />
+        )}
       </div>
 
       {/* Name */}
       <div style={{
-        fontSize: 13,
-        fontWeight: 600,
-        color: '#111827',
-        lineHeight: 1.3,
-        marginBottom: 4,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        fontSize: 13, fontWeight: 600, color: '#111827',
+        lineHeight: 1.3, marginBottom: 4,
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
       }}>
         {displayName}
       </div>
 
       {/* Timestamp */}
-      <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace' }}>
+      <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace', marginBottom: 8 }}>
         {data.last_run_at
           ? formatDistanceToNow(new Date(data.last_run_at), { addSuffix: true, locale: es })
           : 'sin ejecuciones'}
       </div>
 
-      {/* RSS-only: Ejecutar button */}
-      {isRSS && data.enabled && (
+      {/* Row 3: interval + run button */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderTop: '1px solid #F3F4F6', paddingTop: 7 }}>
+        <select
+          value={interval}
+          onChange={(e) => { e.stopPropagation(); setInterval_(e.target.value); }}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            fontSize: 11, fontFamily: 'monospace', color: '#6B7280',
+            border: '1px solid #E5E7EB', borderRadius: 5,
+            padding: '3px 6px', background: '#FAFAFA', cursor: 'pointer',
+            outline: 'none', flexShrink: 0,
+          }}
+        >
+          {INTERVALS.map((v) => <option key={v} value={v}>{v}</option>)}
+        </select>
+
+        <div style={{ flex: 1 }} />
+
         <button
           onClick={(e) => { e.stopPropagation(); handleRun(); }}
           disabled={running}
           title="Ejecutar ahora"
           style={{
-            marginTop: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '3px 8px',
-            fontSize: 11,
-            fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', fontSize: 11, fontWeight: 500,
             color: running ? '#9CA3AF' : '#374151',
             background: running ? '#F9FAFB' : '#F3F4F6',
-            border: '1px solid #E5E7EB',
-            borderRadius: 6,
-            cursor: running ? 'wait' : 'pointer',
-            fontFamily: 'inherit',
+            border: '1px solid #E5E7EB', borderRadius: 5,
+            cursor: running ? 'wait' : 'pointer', fontFamily: 'inherit',
           }}
         >
-          <PlayIcon />
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+            <polygon points="5,3 19,12 5,21"/>
+          </svg>
           {running ? 'Ejecutando…' : 'Ejecutar'}
         </button>
-      )}
+      </div>
 
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }}
-      />
+      <Handle type="source" position={Position.Bottom}
+        style={{ background: '#D1D5DB', width: 8, height: 8, border: 'none' }} />
     </div>
   );
 }

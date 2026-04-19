@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { whalemetricApi } from '@/lib/whalemetric-api';
+import { whalemetricApi, healthCheck } from '@/lib/whalemetric-api';
 
 export const dynamic = 'force-dynamic';
 
-const ALLOWED_GET    = new Set(['status']);
+const ALLOWED_GET    = new Set(['status', 'health']);
 const ALLOWED_POST   = new Set(['enable', 'disable', 'run']);
 
 export async function GET(
@@ -16,7 +16,9 @@ export async function GET(
   }
 
   try {
-    const data = await whalemetricApi.rss.status();
+    const data = action === 'health'
+      ? await healthCheck()
+      : await whalemetricApi.rss.status();
     return NextResponse.json({ ok: true, data });
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error';

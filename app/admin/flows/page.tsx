@@ -138,6 +138,15 @@ export default function FlowsPage() {
 
   useEffect(() => { fetchFlows(); }, [fetchFlows]);
 
+  // ── Health check on mount (debug 401) ────────────────────────────────────
+
+  useEffect(() => {
+    fetch('/api/admin/rss/health')
+      .then((r) => r.json())
+      .then((d) => console.log('[WhaleMetric] health:', d))
+      .catch((e) => console.error('[WhaleMetric] health error:', e));
+  }, []);
+
   // ── Poll rss_fetch status every 30s ─────────────────────────────────────
 
   useEffect(() => {
