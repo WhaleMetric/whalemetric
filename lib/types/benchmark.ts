@@ -161,13 +161,22 @@ export const ROLE_LABELS: Record<ActorRole, string> = {
   reference: 'Referencia',
 };
 
+// Sober palette for benchmark actors. Order matters: primary uses index 0,
+// competitors receive the remaining slots in order of position.
 export const ACTOR_COLOR_PALETTE: string[] = [
-  '#2563EB',
-  '#10B981',
-  '#F59E0B',
-  '#EF4444',
-  '#8B5CF6',
-  '#EC4899',
-  '#0EA5E9',
-  '#5B5B5B',
+  '#0F172A', // primary — deep blue-black
+  '#1E3A8A', // navy
+  '#2563EB', // medium blue
+  '#0891B2', // dark cyan
+  '#0D9488', // teal
+  '#64748B', // blue-gray
+  '#334155', // dark gray
+  '#475569', // medium gray
 ];
+
+// Semantic colors (never used as actor colors). Kept separate on purpose.
+export const SENTIMENT_COLORS = {
+  positive: '#34D399',
+  neutral:  '#94A3B8',
+  negative: '#F87171',
+} as const;

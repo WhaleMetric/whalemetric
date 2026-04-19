@@ -113,7 +113,6 @@ const sections: NavSection[] = [
     defaultOpen: false,
     items: [
       { label: "Benchmarking", href: "/competidores/benchmarking", icon: "benchmarking" },
-      { label: "Share of voice", href: "/competidores/share-of-voice", icon: "share-of-voice" },
       { label: "Analisis de rivales", href: "/analisis-rivales", icon: "analisis-rivales" },
       { label: "Rumores y movimientos", href: "/rumores", icon: "rumores" },
     ],

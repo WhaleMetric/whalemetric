@@ -20,7 +20,7 @@ export function RankingTable({ actors, metrics, ranking }: Props) {
         if (!actor) return null;
         const diff = rank ? rank.previous_position - rank.position : 0;
         const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
-        const arrowColor = diff > 0 ? '#10B981' : diff < 0 ? '#EF4444' : 'var(--text-tertiary)';
+        const arrowColor = diff > 0 ? '#34D399' : diff < 0 ? '#F87171' : 'var(--text-tertiary)';
 
         return (
           <div key={m.actor_id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

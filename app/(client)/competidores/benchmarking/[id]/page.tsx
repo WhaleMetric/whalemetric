@@ -247,7 +247,7 @@ function BenchmarkDetailInner({ id }: { id: string }) {
             {snap.recent_news.items.map((n) => {
               const actor = benchmark.actors.find((a) => a.id === n.actor_id);
               const sentColors: Record<string, string> = {
-                positivo: '#10B981', neutro: '#9CA3AF', negativo: '#EF4444',
+                positivo: '#34D399', neutro: '#94A3B8', negativo: '#F87171',
               };
               return (
                 <div key={n.id} style={{
@@ -257,7 +257,7 @@ function BenchmarkDetailInner({ id }: { id: string }) {
                 }}>
                   <span style={{
                     width: 6, height: 6, borderRadius: '50%',
-                    background: sentColors[n.sentiment] ?? '#9CA3AF',
+                    background: sentColors[n.sentiment] ?? '#94A3B8',
                     marginTop: 8, flexShrink: 0,
                   }} />
                   <div style={{ flex: 1, minWidth: 0 }}>

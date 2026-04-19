@@ -257,7 +257,7 @@ export function NewBenchmarkModal({ onClose }: Props) {
               + Añadir actor
             </button>
             {!hasPrimary && (
-              <div style={{ fontSize: 11, color: '#EF4444', marginTop: 6 }}>
+              <div style={{ fontSize: 11, color: '#F87171', marginTop: 6 }}>
                 Al menos un actor debe tener rol &quot;principal&quot;
               </div>
             )}
@@ -359,7 +359,7 @@ function Field({
         display: 'block', marginBottom: 6,
       }}>
         {label}
-        {required && <span style={{ color: '#EF4444', marginLeft: 2 }}>*</span>}
+        {required && <span style={{ color: '#F87171', marginLeft: 2 }}>*</span>}
       </label>
       {children}
     </div>

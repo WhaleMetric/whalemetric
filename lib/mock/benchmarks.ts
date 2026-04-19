@@ -50,11 +50,11 @@ function buildTimeline(
 // ── Benchmark 1: Supermercados en Badalona ───────────────────────────────────
 
 const SUPERS_ACTORS: BenchmarkActor[] = [
-  { id: 'mock-bm1-mercadona', display_name: 'Mercadona',  role: 'primary',    color: '#007A33', position: 0 },
-  { id: 'mock-bm1-lidl',      display_name: 'Lidl',       role: 'competitor', color: '#F7D500', position: 1 },
-  { id: 'mock-bm1-carrefour', display_name: 'Carrefour',  role: 'competitor', color: '#0066CB', position: 2 },
-  { id: 'mock-bm1-aldi',      display_name: 'Aldi',       role: 'competitor', color: '#00447C', position: 3 },
-  { id: 'mock-bm1-dia',       display_name: 'Dia',        role: 'competitor', color: '#D50A1E', position: 4 },
+  { id: 'mock-bm1-mercadona', display_name: 'Mercadona',  role: 'primary',    color: '#0F172A', position: 0 },
+  { id: 'mock-bm1-lidl',      display_name: 'Lidl',       role: 'competitor', color: '#1E3A8A', position: 1 },
+  { id: 'mock-bm1-carrefour', display_name: 'Carrefour',  role: 'competitor', color: '#2563EB', position: 2 },
+  { id: 'mock-bm1-aldi',      display_name: 'Aldi',       role: 'competitor', color: '#0891B2', position: 3 },
+  { id: 'mock-bm1-dia',       display_name: 'Dia',        role: 'competitor', color: '#0D9488', position: 4 },
 ];
 
 const SUPERS_METRICS: ActorMetrics[] = [
@@ -199,11 +199,11 @@ const BENCHMARK_SUPERS: Benchmark = {
 // ── Benchmark 2: Energéticas en España ───────────────────────────────────────
 
 const ENERGY_ACTORS: BenchmarkActor[] = [
-  { id: 'mock-bm2-iberdrola', display_name: 'Iberdrola', role: 'primary',    color: '#007A47', position: 0 },
-  { id: 'mock-bm2-endesa',    display_name: 'Endesa',    role: 'competitor', color: '#0033A0', position: 1 },
-  { id: 'mock-bm2-naturgy',   display_name: 'Naturgy',   role: 'competitor', color: '#FF671F', position: 2 },
-  { id: 'mock-bm2-repsol',    display_name: 'Repsol',    role: 'competitor', color: '#EC0029', position: 3 },
-  { id: 'mock-bm2-edp',       display_name: 'EDP',       role: 'competitor', color: '#5B5B5B', position: 4 },
+  { id: 'mock-bm2-iberdrola', display_name: 'Iberdrola', role: 'primary',    color: '#0F172A', position: 0 },
+  { id: 'mock-bm2-endesa',    display_name: 'Endesa',    role: 'competitor', color: '#1E3A8A', position: 1 },
+  { id: 'mock-bm2-naturgy',   display_name: 'Naturgy',   role: 'competitor', color: '#0891B2', position: 2 },
+  { id: 'mock-bm2-repsol',    display_name: 'Repsol',    role: 'competitor', color: '#2563EB', position: 3 },
+  { id: 'mock-bm2-edp',       display_name: 'EDP',       role: 'competitor', color: '#0D9488', position: 4 },
 ];
 
 const ENERGY_METRICS: ActorMetrics[] = [

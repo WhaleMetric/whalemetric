@@ -13,8 +13,8 @@ export function ActorMiniCard({ actor, metrics }: Props) {
     metrics.sentiment_positive_pct > 55 ? '↑' :
     metrics.sentiment_positive_pct < 45 ? '↓' : '→';
   const sentColor =
-    metrics.sentiment_positive_pct > 55 ? '#10B981' :
-    metrics.sentiment_positive_pct < 45 ? '#EF4444' : '#9CA3AF';
+    metrics.sentiment_positive_pct > 55 ? '#34D399' :
+    metrics.sentiment_positive_pct < 45 ? '#F87171' : '#94A3B8';
 
   return (
     <div
@@ -73,7 +73,7 @@ export function ActorMiniCard({ actor, metrics }: Props) {
           <span style={{ color: sentColor }}>
             {sentArrow} {metrics.sentiment_positive_pct}%
           </span>
-          <span style={{ color: up ? '#10B981' : '#EF4444' }}>
+          <span style={{ color: up ? '#34D399' : '#F87171' }}>
             {up ? '+' : ''}{metrics.delta_mentions_pct}%
           </span>
         </div>

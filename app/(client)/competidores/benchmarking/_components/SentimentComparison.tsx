@@ -41,18 +41,18 @@ export function SentimentComparison({ actors, metrics }: Props) {
                 minWidth: 40,
               }}
             >
-              <Segment pct={m.sentiment_positive_pct} color="#10B981" />
-              <Segment pct={m.sentiment_neutral_pct}  color="#9CA3AF" />
-              <Segment pct={m.sentiment_negative_pct} color="#EF4444" />
+              <Segment pct={m.sentiment_positive_pct} color="#34D399" />
+              <Segment pct={m.sentiment_neutral_pct}  color="#94A3B8" />
+              <Segment pct={m.sentiment_negative_pct} color="#F87171" />
             </div>
           </div>
         );
       })}
 
       <div style={{ display: 'flex', gap: 14, marginTop: 4, fontSize: 11, color: 'var(--text-tertiary)' }}>
-        <LegendSwatch color="#10B981" label="Positivo" />
-        <LegendSwatch color="#9CA3AF" label="Neutral" />
-        <LegendSwatch color="#EF4444" label="Negativo" />
+        <LegendSwatch color="#34D399" label="Positivo" />
+        <LegendSwatch color="#94A3B8" label="Neutral" />
+        <LegendSwatch color="#F87171" label="Negativo" />
       </div>
     </div>
   );
