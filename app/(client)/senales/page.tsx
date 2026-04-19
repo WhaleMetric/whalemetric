@@ -1,11 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { toast, Toaster } from 'sonner';
 import { useSignals } from '@/lib/hooks/useSignals';
 import SignalsSidebar from '@/components/client/signals/SignalsSidebar';
 import SignalDetail from '@/components/client/signals/SignalDetail';
+import { NewSignalModal } from './_components/NewSignalModal';
 
 function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
@@ -102,9 +102,9 @@ function sk(h: number, w: number | string): React.CSSProperties {
 }
 
 export default function SenalesPage() {
-  const router = useRouter();
-  const { signals, loading, error, toggleFavorite } = useSignals({ status: 'ready' });
+  const { signals, loading, error, toggleFavorite, refresh } = useSignals({ status: 'ready' });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
 
   // Derive the effective selection. While no explicit selection (or the previous
   // one is no longer present) fall back to the first favorite, then the first
@@ -131,7 +131,11 @@ export default function SenalesPage() {
     );
   }
 
-  const handleCreate = () => router.push('/senales/nueva');
+  const handleCreate = () => setShowNewModal(true);
+  const handleCreated = (newId: string) => {
+    void refresh();
+    setSelectedId(newId);
+  };
 
   const handleToggleFavorite = async (id: string, current: boolean) => {
     await toggleFavorite(id, current);
@@ -182,6 +186,13 @@ export default function SenalesPage() {
             <DetailPlaceholder />
           )}
         </>
+      )}
+
+      {showNewModal && (
+        <NewSignalModal
+          onClose={() => setShowNewModal(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );
