@@ -1,7 +1,8 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { createElement, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { MapPin } from 'lucide-react';
 import type { SignalRecord, SignalCategory } from '@/lib/types/signals';
 import {
   SIGNAL_CATEGORY_LABELS,
@@ -34,12 +35,7 @@ function IconPersona() {
   );
 }
 function IconZona() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-      <circle cx="8" cy="7" r="4" />
-      <path d="M8 11v4M5 14h6" strokeLinecap="round" />
-    </svg>
-  );
+  return createElement(MapPin, { size: 14, strokeWidth: 1.6 });
 }
 function IconTema() {
   return (
@@ -296,20 +292,19 @@ function CategoryAccordion({
         <span style={{ flex: 1, fontSize: 12, fontWeight: 600, letterSpacing: '0.02em' }}>
           {SIGNAL_CATEGORY_LABELS[category]}
         </span>
-        {!isEmpty && (
-          <span
-            style={{
-              fontSize: 11,
-              color: 'var(--text-tertiary)',
-              background: 'var(--bg-muted)',
-              padding: '1px 6px',
-              borderRadius: 10,
-              fontWeight: 500,
-            }}
-          >
-            {signals.length}
-          </span>
-        )}
+        <span
+          style={{
+            fontSize: 11,
+            color: isEmpty ? 'var(--text-tertiary)' : 'var(--text-tertiary)',
+            background: isEmpty ? 'transparent' : 'var(--bg-muted)',
+            padding: '1px 6px',
+            borderRadius: 10,
+            fontWeight: 500,
+            opacity: isEmpty ? 0.6 : 1,
+          }}
+        >
+          {signals.length}
+        </span>
         <span style={{ color: 'var(--text-tertiary)', display: 'flex' }}>
           <Chevron open={isOpen} />
         </span>
@@ -320,13 +315,14 @@ function CategoryAccordion({
           {isEmpty ? (
             <div
               style={{
-                padding: '6px 14px 8px 24px',
+                padding: '6px 14px 10px 24px',
                 fontSize: 12,
                 color: 'var(--text-tertiary)',
                 fontStyle: 'italic',
+                textAlign: 'center',
               }}
             >
-              Sin señales asignadas
+              Sin señales de este tipo
             </div>
           ) : (
             signals.map((sig) => (
@@ -480,11 +476,10 @@ export default function SignalsSidebar({
           </div>
         )}
 
-        {/* Categories */}
+        {/* Categories — always render all 11, empty ones start collapsed */}
         <div style={{ paddingTop: favoriteSignals.length ? 0 : 8, paddingBottom: 64 }}>
           {SIGNAL_CATEGORY_ORDER.map((cat) => {
             const sigs = filtered.filter((s) => s.type === cat);
-            if (sigs.length === 0 && !openCategories.has(cat)) return null;
             return (
               <CategoryAccordion
                 key={cat}

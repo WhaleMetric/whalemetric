@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useTheme } from "./ThemeProvider";
+import { useCurrentUser } from "@/lib/hooks/useCurrentUser";
 
 /* ── SVG icon helpers ── */
 
@@ -147,6 +148,14 @@ const sections: NavSection[] = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { theme, toggleTheme } = useTheme();
+  const { user, loading: userLoading } = useCurrentUser();
+
+  const displayName = user?.account_name ?? user?.email ?? '';
+  const avatarInitial = (user?.account_name ?? user?.email ?? '?')
+    .trim()
+    .charAt(0)
+    .toUpperCase() || '?';
+  const planLabel = user?.plan ? `Plan ${user.plan}` : '';
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(
     () => {
@@ -232,10 +241,21 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="sidebar-footer">
         <div className="user-block">
-          <div className="user-avatar">W</div>
+          <div className="user-avatar">{userLoading ? '' : avatarInitial}</div>
           <div className="user-info">
-            <div className="user-name">WhaleMetric</div>
-            <div className="user-role">Plan Professional</div>
+            {userLoading ? (
+              <>
+                <div style={skStyle(12, 120)} />
+                <div style={{ ...skStyle(10, 80), marginTop: 4 }} />
+              </>
+            ) : (
+              <>
+                <div className="user-name" title={displayName}>
+                  {displayName || '—'}
+                </div>
+                {planLabel && <div className="user-role">{planLabel}</div>}
+              </>
+            )}
           </div>
           <div className="footer-actions">
             <button
@@ -253,4 +273,14 @@ export default function Sidebar() {
       </div>
     </aside>
   );
+}
+
+function skStyle(h: number, w: number): React.CSSProperties {
+  return {
+    height: h,
+    width: w,
+    background: 'var(--bg-muted)',
+    borderRadius: 4,
+    animation: 'sidebar-user-pulse 1.4s ease-in-out infinite',
+  };
 }

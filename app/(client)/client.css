@@ -253,6 +253,11 @@ body {
   height: 16px;
 }
 
+@keyframes sidebar-user-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
 /* ═══ MAIN CONTENT AREA ═══ */
 .client-main {
   flex: 1;
