@@ -1,36 +1,41 @@
+// Server-side only — imported by API routes, never by client components.
+
 const API_BASE  = 'https://api.whalemetric.com';
 const API_TOKEN = 'wm_8d5bc53cc4de1949d0444dba5dfebefb51c1d4fc30eaafc1ce626d34dd66744a';
 
-async function apiCall(endpoint: string, method = 'GET', body?: unknown) {
-  console.log('WM API Call:', method, endpoint);
+export async function apiCall(endpoint: string, method = 'GET', body?: unknown) {
+  const url = `${API_BASE}${endpoint}`;
+  console.log(`[WM] ${method} ${url}`);
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const res = await fetch(url, {
     method,
     headers: {
       'Authorization': `Bearer ${API_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    cache: 'no-store',
   });
 
-  console.log('WM Response status:', response.status);
+  console.log(`[WM] → ${res.status}`);
 
-  if (!response.ok) {
-    const error = await response.text().catch(() => '');
-    console.error('WM Error:', error);
-    throw new Error(error || `Error ${response.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    console.error(`[WM] Error body:`, text);
+    throw new Error(text || `Error ${res.status}`);
   }
 
-  return response.json();
+  return res.json();
 }
 
 export async function healthCheck() {
-  console.log('WM Health check →', `${API_BASE}/api/health`);
-  const response = await fetch(`${API_BASE}/api/health`);
-  console.log('WM Health status:', response.status);
-  const text = await response.text();
-  console.log('WM Health body:', text);
-  return text;
+  const url = `${API_BASE}/api/health`;
+  console.log(`[WM] GET ${url} (no auth)`);
+  const res = await fetch(url, { cache: 'no-store' });
+  console.log(`[WM] health → ${res.status}`);
+  const text = await res.text();
+  console.log(`[WM] health body:`, text);
+  return { status: res.status, body: text };
 }
 
 export const whalemetricApi = {

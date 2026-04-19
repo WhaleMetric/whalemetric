@@ -15,7 +15,6 @@ import ReactFlow, {
 } from 'reactflow';
 
 import { createClient } from '@/lib/supabase/browser';
-import { whalemetricApi, healthCheck } from '@/lib/whalemetric-api';
 import { FlowNode, type FlowNodeData } from './FlowNode';
 import { AnimatedEdge, type AnimatedEdgeData } from './AnimatedEdge';
 import { FLOW_GRAPH, EXCLUDED_SLUGS } from './flow-graph';
@@ -139,21 +138,24 @@ export default function FlowsPage() {
 
   useEffect(() => { fetchFlows(); }, [fetchFlows]);
 
-  // ── Health check on mount (debug connectivity) ───────────────────────────
+  // ── Health check on mount (via proxy — logs appear in Vercel Functions) ──
 
   useEffect(() => {
-    healthCheck()
+    fetch('/api/admin/rss/health')
+      .then((r) => r.json())
       .then((d) => console.log('[WhaleMetric] health:', d))
       .catch((e) => console.error('[WhaleMetric] health error:', e));
   }, []);
 
-  // ── Poll rss_fetch status every 30s (direct API call) ───────────────────
+  // ── Poll rss_fetch status every 30s (via proxy) ──────────────────────────
 
   useEffect(() => {
     const poll = async () => {
       try {
-        const data = await whalemetricApi.rss.status();
-        const { enabled, last_status, last_run_at } = data ?? {};
+        const res  = await fetch('/api/admin/rss/status');
+        const json = await res.json();
+        if (!json.ok) return;
+        const { enabled, last_status, last_run_at } = json.data ?? {};
         setFlows((prev) =>
           prev.map((f) =>
             f.slug === 'rss_fetch'
