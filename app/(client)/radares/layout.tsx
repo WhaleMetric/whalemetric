@@ -4,6 +4,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast, Toaster } from 'sonner';
 import { useRadarFolders } from '@/lib/hooks/useRadarFolders';
+import { useRadares } from '@/lib/hooks/useRadares';
 import { RadaresSidebar } from './_components/RadaresSidebar';
 import { FolderModal } from './_components/FolderModal';
 import { NewRadarModal } from './_components/NewRadarModal';
@@ -18,11 +19,11 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
     folders, refresh: refreshFolders,
     createFolder, updateFolder, deleteFolder, reorderFolders,
   } = useRadarFolders();
+  const { radars, unreadAlertCount } = useRadares(null, null, '');
 
   const [showNewRadar,    setShowNewRadar]    = useState(false);
   const [showNewFolder,   setShowNewFolder]   = useState(false);
   const [editingFolder,   setEditingFolder]   = useState<RadarFolder | null>(null);
-  const [deletingFolder,  setDeletingFolder]  = useState<RadarFolder | null>(null);
 
   const [search, setSearch_] = useState(searchParams.get('q') ?? '');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,8 +68,12 @@ function RadaresLayoutInner({ children }: { children: React.ReactNode }) {
 
       <RadaresSidebar
         folders={folders}
-        unreadAlertCount={0}
-        unreadCounts={{ favorites: 0, recientes: 0 }}
+        radars={radars}
+        unreadAlertCount={unreadAlertCount}
+        unreadCounts={{
+          favorites: radars.filter((r) => r.is_favorite).length,
+          recientes: radars.filter((r) => r.last_viewed_at).length,
+        }}
         onNewRadar={() => setShowNewRadar(true)}
         onNewFolder={() => setShowNewFolder(true)}
         onEditFolder={(f) => setEditingFolder(f)}

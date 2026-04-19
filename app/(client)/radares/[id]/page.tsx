@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import {
   BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { createClient } from '@/lib/supabase/browser';
 import { fetchRadarById } from '@/lib/hooks/useRadares';
@@ -34,37 +35,31 @@ export default function RadarDetailPage({
 
   useEffect(() => {
     if (!radarId) return;
-
-    // Mock short-circuit
-    const mockRadar = findMockRadar(radarId);
-    if (mockRadar) {
-      setRadar(mockRadar);
-      setSnapshot(findMockSnapshot(radarId) ?? null);
-      setLoading(false);
-      return;
-    }
-
-    const supabase = createClient();
-
-    // Update last_viewed_at
-    supabase
-      .from('radars')
-      .update({ last_viewed_at: new Date().toISOString() })
-      .eq('id', radarId);
-
-    // Fetch radar + snapshot in parallel
-    Promise.all([
-      fetchRadarById(radarId),
+    void (async () => {
+      const mockRadar = findMockRadar(radarId);
+      if (mockRadar) {
+        setRadar(mockRadar);
+        setSnapshot(findMockSnapshot(radarId) ?? null);
+        setLoading(false);
+        return;
+      }
+      const supabase = createClient();
       supabase
-        .from('radar_snapshot')
-        .select('*')
-        .eq('radar_id', radarId)
-        .maybeSingle(),
-    ]).then(([radarData, snapRes]) => {
+        .from('radars')
+        .update({ last_viewed_at: new Date().toISOString() })
+        .eq('id', radarId);
+      const [radarData, snapRes] = await Promise.all([
+        fetchRadarById(radarId),
+        supabase
+          .from('radar_snapshot')
+          .select('*')
+          .eq('radar_id', radarId)
+          .maybeSingle(),
+      ]);
       setRadar(radarData);
       setSnapshot((snapRes.data as unknown as RadarSnapshot) ?? null);
       setLoading(false);
-    });
+    })();
   }, [radarId]);
 
   if (loading) return <RadarSkeleton />;
@@ -76,22 +71,14 @@ export default function RadarDetailPage({
     <div style={{ minHeight: '100%', background: 'var(--bg-subtle)' }}>
       {/* Header */}
       <div style={{
-        padding: '18px 28px 14px',
+        padding: '14px 28px 14px',
         borderBottom: '1px solid var(--border)',
         background: 'var(--bg)',
-        display: 'flex', alignItems: 'center', gap: 16,
+        display: 'flex', alignItems: 'flex-start', gap: 16,
       }}>
-        <button
-          onClick={() => router.back()}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-tertiary)', padding: 0, display: 'flex' }}
-        >
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M10 4L6 8l4 4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <Breadcrumb radarName={radar.name} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 6 }}>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               {radar.name}
             </h1>
@@ -130,7 +117,7 @@ export default function RadarDetailPage({
       {/* Body */}
       <div style={{ padding: 28 }}>
         {isReady ? (
-          <ReadyDashboard radar={radar} snapshot={snapshot!} />
+          <ReadyDashboard snapshot={snapshot!} />
         ) : (
           <WarmingUp radar={radar} />
         )}
@@ -176,7 +163,7 @@ function WarmingUp({ radar }: { radar: Radar }) {
 
 // ── Ready dashboard ───────────────────────────────────────────────────────────
 
-function ReadyDashboard({ radar, snapshot }: { radar: Radar; snapshot: RadarSnapshot }) {
+function ReadyDashboard({ snapshot }: { snapshot: RadarSnapshot }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* KPIs */}
@@ -406,4 +393,38 @@ function formatReach(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
   return n.toString();
+}
+
+function Breadcrumb({ radarName }: { radarName: string }) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        fontSize: 12, color: 'var(--text-tertiary)',
+      }}
+    >
+      <Link
+        href="/radares"
+        style={{
+          color: 'var(--text-tertiary)', textDecoration: 'none',
+          transition: 'color 0.12s',
+        }}
+        onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-primary)'; }}
+        onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = 'var(--text-tertiary)'; }}
+      >
+        Radares
+      </Link>
+      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2">
+        <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{
+        color: 'var(--text-secondary)',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        maxWidth: 360,
+      }}>
+        {radarName}
+      </span>
+    </nav>
+  );
 }

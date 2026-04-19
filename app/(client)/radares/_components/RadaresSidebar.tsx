@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   DndContext, closestCenter, PointerSensor, KeyboardSensor,
   useSensor, useSensors, type DragEndEvent,
@@ -14,26 +15,37 @@ import { CSS } from '@dnd-kit/utilities';
 import {
   Briefcase, AlertTriangle, Target, Users, Rocket, Flag,
   Megaphone, TrendingUp, Shield, Bookmark, Star, Zap,
+  Inbox,
 } from 'lucide-react';
-import type { RadarFolder } from '@/lib/types/radares';
+import type { Radar, RadarFolder } from '@/lib/types/radares';
+import { formulaToText } from '@/lib/radar-formula';
+import { MOCK_FOLDERS } from '@/lib/mock/radares';
 
 const ICON_MAP: Record<string, React.ElementType> = {
   Briefcase, AlertTriangle, Target, Users, Rocket, Flag,
   Megaphone, TrendingUp, Shield, Bookmark, Star, Zap,
 };
 
-const LS_KEY = 'radares:collapsed-folders';
+const LS_KEY = 'radares:expanded-folders';
+const SIN_CARPETA_ID = '__sin_carpeta__';
 
-function getCollapsed(): string[] {
-  if (typeof window === 'undefined') return [];
-  try { return JSON.parse(localStorage.getItem(LS_KEY) ?? '[]'); } catch { return []; }
+function readExpanded(): string[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : null;
+  } catch { return null; }
 }
-function setCollapsed(ids: string[]) {
+
+function writeExpanded(ids: string[]) {
   if (typeof window !== 'undefined') localStorage.setItem(LS_KEY, JSON.stringify(ids));
 }
 
 interface Props {
   folders: RadarFolder[];
+  radars: Radar[];
   unreadAlertCount: number;
   unreadCounts: { favorites: number; recientes: number };
   onNewRadar: () => void;
@@ -46,25 +58,63 @@ interface Props {
 }
 
 export function RadaresSidebar({
-  folders, unreadAlertCount, unreadCounts,
+  folders, radars, unreadAlertCount, unreadCounts,
   onNewRadar, onNewFolder, onEditFolder, onDeleteFolder, onReorderFolders,
   search, onSearchChange,
 }: Props) {
   const router       = useRouter();
+  const pathname     = usePathname();
   const searchParams = useSearchParams();
   const view         = searchParams.get('view');
-  const folderId     = searchParams.get('folder');
 
-  const [collapsed, setCollapsed_] = useState<string[]>([]);
+  // Parse active radar from pathname /radares/{id}
+  const activeRadarId = (() => {
+    const m = pathname.match(/^\/radares\/([^/?#]+)/);
+    return m ? m[1] : null;
+  })();
+  const activeRadar = activeRadarId
+    ? radars.find((r) => r.id === activeRadarId)
+    : null;
+  const activeFolderId = activeRadar?.folder_id ?? null;
+
+  // Expanded folders (UUIDs + SIN_CARPETA_ID)
+  const [expanded, setExpandedState] = useState<Set<string>>(() => new Set());
+  const [hydrated, setHydrated] = useState(false);
   const [hoveredFolder, setHoveredFolder] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { setCollapsed_(getCollapsed()); }, []);
+  // Hydrate expanded set from localStorage + route
+  useEffect(() => {
+    const persisted = readExpanded();
+    const initial = new Set<string>(
+      persisted ?? MOCK_FOLDERS.map((f) => f.id),
+    );
+    if (activeFolderId) initial.add(activeFolderId);
+    if (activeRadar && activeRadar.folder_id === null) initial.add(SIN_CARPETA_ID);
+    setExpandedState(initial);
+    setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const toggleCollapse = (id: string) => {
-    setCollapsed_((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      setCollapsed(next);
+  // Ensure the active folder expands when the route changes.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!activeFolderId && !activeRadar) return;
+    setExpandedState((prev) => {
+      const id = activeFolderId ?? (activeRadar && activeRadar.folder_id === null ? SIN_CARPETA_ID : null);
+      if (!id || prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      writeExpanded(Array.from(next));
+      return next;
+    });
+  }, [activeFolderId, activeRadar, hydrated]);
+
+  const toggleFolder = (id: string) => {
+    setExpandedState((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      writeExpanded(Array.from(next));
       return next;
     });
   };
@@ -87,34 +137,47 @@ export function RadaresSidebar({
     return () => window.removeEventListener('keydown', down);
   }, []);
 
-  // dnd-kit sensors
+  // DnD (folders only)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = folders.findIndex((f) => f.id === active.id);
     const newIdx = folders.findIndex((f) => f.id === over.id);
+    if (oldIdx < 0 || newIdx < 0) return;
     onReorderFolders(arrayMove(folders, oldIdx, newIdx));
   };
 
-  const isActive = (v: string | null, f: string | null) => v === view && f === folderId;
+  // Group radars by folder (applies search filter locally too)
+  const searchLower = search.trim().toLowerCase();
+  const radarMatchesSearch = (r: Radar) =>
+    !searchLower || r.name.toLowerCase().includes(searchLower);
 
-  const navItemStyle = (active: boolean): React.CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: 8,
-    padding: '7px 12px', cursor: 'pointer', fontSize: 13,
-    color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-    background: active ? 'var(--bg-muted)' : 'transparent',
-    borderLeft: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
-    borderRadius: '0 6px 6px 0',
-    fontWeight: active ? 600 : 400,
-    transition: 'background 0.1s',
-  });
+  const radarsByFolder = new Map<string, Radar[]>();
+  const radarsNoFolder: Radar[] = [];
+  for (const r of radars) {
+    if (!radarMatchesSearch(r)) continue;
+    if (r.folder_id) {
+      const list = radarsByFolder.get(r.folder_id) ?? [];
+      list.push(r);
+      radarsByFolder.set(r.folder_id, list);
+    } else {
+      radarsNoFolder.push(r);
+    }
+  }
 
-  const sinCarpetaCount = folders.reduce((acc, f) => acc, 0); // placeholder
+  // When searching: force-expand folders with matches, collapse the rest
+  const isSearching = !!searchLower;
+  const effectiveExpanded = (id: string): boolean => {
+    if (isSearching) {
+      if (id === SIN_CARPETA_ID) return radarsNoFolder.length > 0;
+      return (radarsByFolder.get(id)?.length ?? 0) > 0;
+    }
+    return expanded.has(id);
+  };
 
   return (
     <div style={{
@@ -166,14 +229,14 @@ export function RadaresSidebar({
             icon={<StarIcon />}
             label="Favoritos"
             count={unreadCounts.favorites}
-            active={view === 'favoritos' && !folderId}
+            active={view === 'favoritos'}
             dimmed={unreadCounts.favorites === 0}
             onClick={() => navigate({ view: 'favoritos' })}
           />
           <AutoView
             icon={<ClockIcon />}
             label="Recientes"
-            active={view === 'recientes' && !folderId}
+            active={view === 'recientes'}
             onClick={() => navigate({ view: 'recientes' })}
           />
           {unreadAlertCount > 0 && (
@@ -182,7 +245,7 @@ export function RadaresSidebar({
               label="Con alertas"
               count={unreadAlertCount}
               countRed
-              active={view === 'alertas' && !folderId}
+              active={view === 'alertas'}
               onClick={() => navigate({ view: 'alertas' })}
             />
           )}
@@ -191,46 +254,53 @@ export function RadaresSidebar({
         <div style={{ height: 1, background: 'var(--border-light)', margin: '4px 0' }} />
 
         {/* Folders header */}
-        <div style={{ padding: '10px 14px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '10px 14px 6px' }}>
           <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Carpetas
           </span>
         </div>
 
-        {/* Sortable folders */}
+        {/* Sortable folders with accordion */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={folders.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-            {folders.map((folder) => (
-              <SortableFolderRow
-                key={folder.id}
-                folder={folder}
-                active={folderId === folder.id}
-                hovered={hoveredFolder === folder.id}
-                onHover={setHoveredFolder}
-                onNavigate={() => navigate({ folder: folder.id })}
-                onEdit={() => onEditFolder(folder)}
-                onDelete={() => onDeleteFolder(folder)}
-              />
-            ))}
+            {folders.map((folder) => {
+              const folderRadars = radarsByFolder.get(folder.id) ?? [];
+              const isOpen = effectiveExpanded(folder.id);
+              const matchesInFolder = isSearching ? folderRadars.length : -1;
+              // Hide folders with no matches when searching
+              if (isSearching && folderRadars.length === 0) return null;
+              return (
+                <SortableFolderAccordion
+                  key={folder.id}
+                  folder={folder}
+                  radars={folderRadars}
+                  expanded={isOpen}
+                  onToggle={() => toggleFolder(folder.id)}
+                  hovered={hoveredFolder === folder.id}
+                  onHover={setHoveredFolder}
+                  onEdit={() => onEditFolder(folder)}
+                  onDelete={() => onDeleteFolder(folder)}
+                  activeRadarId={activeRadarId}
+                  searchMatches={matchesInFolder}
+                />
+              );
+            })}
           </SortableContext>
         </DndContext>
 
         {/* Sin carpeta */}
-        <div
-          onClick={() => navigate({ view: 'sin-carpeta' })}
-          style={{
-            ...navItemStyle(view === 'sin-carpeta' && !folderId),
-            margin: '0 8px', paddingLeft: 10,
-          }}
-          onMouseEnter={(e) => { if (view !== 'sin-carpeta') (e.currentTarget as HTMLElement).style.background = 'var(--bg-subtle)'; }}
-          onMouseLeave={(e) => { if (view !== 'sin-carpeta') (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-        >
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <path d="M2 5h12v9H2z" strokeLinejoin="round" />
-            <path d="M2 5l2-3h4l2 3" strokeLinejoin="round" />
-          </svg>
-          <span style={{ flex: 1, fontSize: 13 }}>Sin carpeta</span>
-        </div>
+        {(!isSearching || radarsNoFolder.length > 0) && (
+          <FolderAccordionRow
+            id={SIN_CARPETA_ID}
+            name="Sin carpeta"
+            icon={<Inbox size={13} />}
+            iconColor="var(--text-tertiary)"
+            radars={radarsNoFolder}
+            expanded={effectiveExpanded(SIN_CARPETA_ID)}
+            onToggle={() => toggleFolder(SIN_CARPETA_ID)}
+            activeRadarId={activeRadarId}
+          />
+        )}
       </div>
 
       {/* Bottom buttons */}
@@ -268,19 +338,25 @@ export function RadaresSidebar({
   );
 }
 
-// ── Sortable folder row ───────────────────────────────────────────────────────
+// ── Sortable folder accordion (real folders) ─────────────────────────────────
 
-interface FolderRowProps {
+interface SortableProps {
   folder: RadarFolder;
-  active: boolean;
+  radars: Radar[];
+  expanded: boolean;
+  onToggle: () => void;
   hovered: boolean;
   onHover: (id: string | null) => void;
-  onNavigate: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  activeRadarId: string | null;
+  searchMatches: number;
 }
 
-function SortableFolderRow({ folder, active, hovered, onHover, onNavigate, onEdit, onDelete }: FolderRowProps) {
+function SortableFolderAccordion({
+  folder, radars, expanded, onToggle, hovered, onHover,
+  onEdit, onDelete, activeRadarId, searchMatches,
+}: SortableProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: folder.id });
 
@@ -290,13 +366,12 @@ function SortableFolderRow({ folder, active, hovered, onHover, onNavigate, onEdi
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const count = folder.radars?.[0]?.count ?? 0;
   const FolderIcon = folder.icon ? (ICON_MAP[folder.icon] ?? null) : null;
 
   return (
     <div
       ref={setNodeRef}
-      style={{ ...style, margin: '1px 8px', borderRadius: 6, position: 'relative' }}
+      style={{ ...style, margin: '1px 8px', position: 'relative' }}
       onMouseEnter={() => onHover(folder.id)}
       onMouseLeave={() => onHover(null)}
     >
@@ -305,10 +380,10 @@ function SortableFolderRow({ folder, active, hovered, onHover, onNavigate, onEdi
         {...attributes}
         {...listeners}
         style={{
-          position: 'absolute', left: 0, top: 0, bottom: 0, width: 16,
+          position: 'absolute', left: -2, top: 0, width: 16, height: 30,
           cursor: isDragging ? 'grabbing' : 'grab',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          opacity: hovered ? 0.4 : 0, transition: 'opacity 0.15s',
+          opacity: hovered ? 0.35 : 0, transition: 'opacity 0.15s',
           color: 'var(--text-tertiary)',
           zIndex: 1,
         }}
@@ -320,56 +395,219 @@ function SortableFolderRow({ folder, active, hovered, onHover, onNavigate, onEdi
         </svg>
       </div>
 
-      {/* Main row */}
-      <div
-        onClick={onNavigate}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8,
-          padding: '7px 8px 7px 20px', cursor: 'pointer', fontSize: 13,
-          color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
-          background: active ? 'var(--bg-muted)' : hovered ? 'var(--bg-subtle)' : 'transparent',
-          borderLeft: `2px solid ${active ? 'var(--accent)' : 'transparent'}`,
-          borderRadius: '0 6px 6px 0',
-          fontWeight: active ? 600 : 400,
-          transition: 'background 0.1s',
-        }}
-      >
-        <span style={{ color: folder.color ?? 'var(--text-tertiary)', display: 'flex', flexShrink: 0 }}>
-          {FolderIcon ? <FolderIcon size={13} /> : (
+      <AccordionHeader
+        expanded={expanded}
+        onToggle={onToggle}
+        hovered={hovered}
+        name={folder.name}
+        icon={
+          FolderIcon ? (
+            <FolderIcon size={13} />
+          ) : (
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M2 5h12v9H2z" strokeLinejoin="round" />
               <path d="M2 5l2-3h4l2 3" strokeLinejoin="round" />
             </svg>
-          )}
-        </span>
-        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {folder.name}
-        </span>
+          )
+        }
+        iconColor={folder.color ?? 'var(--text-tertiary)'}
+        count={searchMatches >= 0 ? searchMatches : radars.length}
+        actions={
+          hovered ? (
+            <>
+              <IconBtn onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar">
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M11 2l3 3-9 9H2v-3l9-9z" strokeLinejoin="round" />
+                </svg>
+              </IconBtn>
+              <IconBtn onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Eliminar" danger>
+                <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <path d="M3 5h10M6 5V3h4v2M5 5l1 9h4l1-9" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </IconBtn>
+            </>
+          ) : null
+        }
+      />
 
-        {/* Hover actions */}
-        {hovered && (
-          <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
-            <IconBtn onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar">
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M11 2l3 3-9 9H2v-3l9-9z" strokeLinejoin="round" />
-              </svg>
-            </IconBtn>
-            <IconBtn onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Eliminar" danger>
-              <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M3 5h10M6 5V3h4v2M5 5l1 9h4l1-9" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </IconBtn>
-          </div>
-        )}
+      {expanded && (
+        <RadarChildList radars={radars} activeRadarId={activeRadarId} />
+      )}
+    </div>
+  );
+}
 
-        {/* Count badge (when not hovering) */}
-        {!hovered && count > 0 && (
+// ── Non-sortable folder row (Sin carpeta) ────────────────────────────────────
+
+function FolderAccordionRow({
+  id, name, icon, iconColor, radars, expanded, onToggle, activeRadarId,
+}: {
+  id: string;
+  name: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  radars: Radar[];
+  expanded: boolean;
+  onToggle: () => void;
+  activeRadarId: string | null;
+}) {
+  return (
+    <div style={{ margin: '1px 8px' }} data-folder-id={id}>
+      <AccordionHeader
+        expanded={expanded}
+        onToggle={onToggle}
+        hovered={false}
+        name={name}
+        icon={icon}
+        iconColor={iconColor}
+        count={radars.length}
+      />
+      {expanded && <RadarChildList radars={radars} activeRadarId={activeRadarId} />}
+    </div>
+  );
+}
+
+// ── Shared: accordion header row ────────────────────────────────────────────
+
+function AccordionHeader({
+  expanded, onToggle, hovered, name, icon, iconColor, count, actions,
+}: {
+  expanded: boolean;
+  onToggle: () => void;
+  hovered: boolean;
+  name: string;
+  icon: React.ReactNode;
+  iconColor: string;
+  count: number;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <div
+      onClick={onToggle}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '7px 8px 7px 18px', cursor: 'pointer', fontSize: 13,
+        color: 'var(--text-secondary)',
+        background: hovered ? 'var(--bg-subtle)' : 'transparent',
+        borderRadius: 6,
+        transition: 'background 0.1s',
+        userSelect: 'none',
+      }}
+    >
+      <Chevron open={expanded} />
+      <span style={{ color: iconColor, display: 'flex', flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {name}
+      </span>
+      {actions ? (
+        <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>{actions}</div>
+      ) : (
+        count > 0 && (
           <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontFamily: 'monospace', flexShrink: 0 }}>
             {count}
           </span>
-        )}
-      </div>
+        )
+      )}
     </div>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="10" height="10" viewBox="0 0 16 16"
+      fill="none" stroke="currentColor" strokeWidth="2"
+      style={{
+        transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+        transition: 'transform 150ms ease',
+        color: 'var(--text-tertiary)',
+        flexShrink: 0,
+      }}
+    >
+      <path d="M6 4l4 4-4 4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// ── Radar children list inside an expanded folder ────────────────────────────
+
+function RadarChildList({
+  radars, activeRadarId,
+}: { radars: Radar[]; activeRadarId: string | null }) {
+  if (radars.length === 0) {
+    return (
+      <div style={{
+        padding: '6px 12px 8px 32px',
+        fontSize: 11, color: 'var(--text-tertiary)', fontStyle: 'italic',
+      }}>
+        Sin radares.
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: '2px 0 4px' }}>
+      {radars.map((r) => (
+        <RadarChildItem key={r.id} radar={r} active={r.id === activeRadarId} />
+      ))}
+    </div>
+  );
+}
+
+function RadarChildItem({ radar, active }: { radar: Radar; active: boolean }) {
+  const formula = formulaToText(radar.clauses, radar.top_level_operator);
+  return (
+    <Link
+      href={`/radares/${radar.id}`}
+      style={{
+        display: 'block',
+        padding: '6px 10px 6px 32px',
+        textDecoration: 'none',
+        background: active ? 'rgba(0,0,0,0.04)' : 'transparent',
+        borderRadius: 6,
+        margin: '0 4px',
+        transition: 'background 0.12s, transform 0.12s',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) (e.currentTarget as HTMLElement).style.background = 'rgba(0,0,0,0.025)';
+        (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent';
+        (e.currentTarget as HTMLElement).style.transform = 'none';
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          fontWeight: active ? 600 : 500,
+          color: 'var(--text-primary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          lineHeight: 1.25,
+        }}
+      >
+        {radar.name}
+      </div>
+      <div
+        title={formula}
+        style={{
+          fontFamily:
+            'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          fontSize: 10.5,
+          color: 'var(--text-tertiary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          marginTop: 1,
+        }}
+      >
+        {formula}
+      </div>
+    </Link>
   );
 }
 
@@ -464,3 +702,4 @@ function AlertIcon() {
     </svg>
   );
 }
+

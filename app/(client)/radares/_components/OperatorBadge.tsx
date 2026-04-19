@@ -1,10 +1,10 @@
 export type OpKind = 'and' | 'or' | 'not' | 'min';
 
-const BG: Record<OpKind, string> = {
-  and: 'var(--op-and, #10B981)',
-  or:  'var(--op-or, #3B82F6)',
-  not: 'var(--op-not, #EC4899)',
-  min: 'var(--op-min, #F59E0B)',
+const STYLES: Record<OpKind, { bg: string; color: string }> = {
+  and: { bg: 'rgba(16, 185, 129, 0.12)',  color: '#047857' },
+  or:  { bg: 'rgba(59, 130, 246, 0.12)',  color: '#1D4ED8' },
+  not: { bg: 'rgba(236, 72, 153, 0.12)',  color: '#9D174D' },
+  min: { bg: 'rgba(245, 158, 11, 0.15)',  color: '#B45309' },
 };
 
 const DEFAULT_LABEL: Record<OpKind, string> = {
@@ -20,6 +20,7 @@ interface Props {
 }
 
 export function OperatorBadge({ kind, label }: Props) {
+  const { bg, color } = STYLES[kind];
   return (
     <span
       style={{
@@ -30,8 +31,8 @@ export function OperatorBadge({ kind, label }: Props) {
         fontSize: 10,
         fontWeight: 600,
         letterSpacing: '0.08em',
-        color: '#fff',
-        background: BG[kind],
+        color,
+        background: bg,
         textTransform: 'uppercase',
         flexShrink: 0,
         lineHeight: 1.4,

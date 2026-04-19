@@ -413,7 +413,7 @@ export default function SignalsSidebar({ selectedId, favorites, onSelect, onTogg
   return (
     <div
       style={{
-        width: 232,
+        width: 280,
         flexShrink: 0,
         borderRight: '1px solid var(--border)',
         background: 'var(--bg)',

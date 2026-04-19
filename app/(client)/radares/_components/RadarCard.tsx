@@ -94,17 +94,6 @@ export function RadarCard({
     >
       {/* Row 1: favorite + name + menu */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
-        {radar.is_mock && (
-          <div style={{ position: 'absolute', top: 10, right: 42 }}>
-            <span style={{
-              fontSize: 10, fontWeight: 600,
-              padding: '2px 8px', borderRadius: 4,
-              background: '#FEF3C7', color: '#92400E',
-            }}>
-              Datos de ejemplo
-            </span>
-          </div>
-        )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(radar.id, radar.is_favorite); }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginTop: 1 }}
