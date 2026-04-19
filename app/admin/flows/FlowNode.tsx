@@ -4,6 +4,7 @@ import { memo, useState } from 'react';
 import { Handle, Position, type NodeProps } from 'reactflow';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { whalemetricApi } from '@/lib/whalemetric-api';
 
 const DISPLAY_NAMES: Partial<Record<string, string>> = {
   scraping_web: 'Scraping noticia completa',
@@ -129,13 +130,14 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
   async function handleToggle() {
     if (isRSS) {
       setToggling(true);
-      const action = data.enabled ? 'disable' : 'enable';
       try {
-        const res  = await fetch(`/api/admin/rss/${action}`, { method: 'POST' });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error ?? `Error ${action}`);
+        if (data.enabled) {
+          await whalemetricApi.rss.disable();
+        } else {
+          await whalemetricApi.rss.enable();
+        }
         data.onToggle(data.slug, !data.enabled);
-        data.onToast?.(`RSS ${action === 'enable' ? 'activado' : 'desactivado'}`, true);
+        data.onToast?.(`RSS ${data.enabled ? 'desactivado' : 'activado'}`, true);
       } catch (e) {
         data.onToast?.(e instanceof Error ? e.message : 'Error al cambiar estado', false);
       } finally {
@@ -150,9 +152,7 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
     if (isRSS) {
       setRunning(true);
       try {
-        const res  = await fetch('/api/admin/rss/run', { method: 'POST' });
-        const json = await res.json();
-        if (!json.ok) throw new Error(json.error ?? 'Error ejecutando RSS');
+        await whalemetricApi.rss.run();
         data.onToast?.('RSS en ejecución', true);
       } catch (e) {
         data.onToast?.(e instanceof Error ? e.message : 'Error al ejecutar', false);
@@ -160,7 +160,6 @@ function FlowNodeComponent({ data }: NodeProps<FlowNodeData>) {
         setRunning(false);
       }
     } else {
-      // Visual-only for other nodes
       console.log(`[run] ${data.slug} — interval: ${interval}`);
     }
   }
