@@ -2,7 +2,86 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/browser';
-import type { Radar } from '@/lib/types/radares';
+import { MOCK_RADARS } from '@/lib/mock/radares';
+import type {
+  Radar,
+  Clause,
+  RawRadarRow,
+  RawClauseRow,
+} from '@/lib/types/radares';
+
+// ── Transform raw Supabase rows → UI Radar ───────────────────────────────────
+
+function clauseFromRaw(raw: RawClauseRow): Clause {
+  const signals = [...(raw.radar_clause_signals ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((cs) => cs.signals);
+  return {
+    id: raw.id,
+    position: raw.position,
+    operator: raw.operator,
+    min_matches: raw.min_matches,
+    is_exclusion: raw.is_exclusion,
+    signals,
+  };
+}
+
+function radarFromRaw(raw: RawRadarRow): Radar {
+  const clauses = [...(raw.radar_clauses ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map(clauseFromRaw);
+  return {
+    id: raw.id,
+    user_id: raw.user_id,
+    name: raw.name,
+    description: raw.description,
+    top_level_operator: raw.top_level_operator ?? 'and',
+    status: raw.status,
+    is_favorite: raw.is_favorite,
+    folder_id: raw.folder_id,
+    last_viewed_at: raw.last_viewed_at,
+    updated_at: raw.updated_at,
+    created_at: raw.created_at,
+    clauses,
+    radar_alerts: raw.radar_alerts ?? [{ count: 0 }],
+  };
+}
+
+// ── Mock filtering (mirrors Supabase filters locally) ────────────────────────
+
+function filterMocks(
+  view: string | null,
+  folderId: string | null,
+  search: string,
+): Radar[] {
+  let list = MOCK_RADARS.slice();
+
+  if (folderId) list = list.filter((r) => r.folder_id === folderId);
+  else if (view === 'favoritos') list = list.filter((r) => r.is_favorite);
+  else if (view === 'recientes') list = list.filter((r) => r.last_viewed_at);
+  else if (view === 'sin-carpeta') list = list.filter((r) => r.folder_id === null);
+  else if (view === 'alertas')
+    list = list.filter((r) => (r.radar_alerts[0]?.count ?? 0) > 0);
+
+  if (search) {
+    const q = search.toLowerCase();
+    list = list.filter((r) => r.name.toLowerCase().includes(q));
+  }
+
+  return list;
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
+const SELECT = `
+  id, user_id, name, description, top_level_operator, status, is_favorite,
+  folder_id, last_viewed_at, updated_at, created_at,
+  radar_clauses (
+    id, position, operator, min_matches, is_exclusion,
+    radar_clause_signals ( signal_id, position, signals ( id, name, type ) )
+  ),
+  radar_alerts (count)
+`;
 
 export function useRadares(
   view: string | null,
@@ -17,17 +96,9 @@ export function useRadares(
     setLoading(true);
     const supabase = createClient();
 
-    let query = supabase
-      .from('radars')
-      .select(
-        `id, name, description, operator, status, is_favorite,
-         folder_id, last_viewed_at, updated_at, created_at,
-         radar_signals(signal_id, signals(id, name, type)),
-         radar_alerts(count)`,
-      )
-      .neq('status', 'archived');
+    let query = supabase.from('radars').select(SELECT).neq('status', 'archived');
 
-    if (folderId) {
+    if (folderId && !folderId.startsWith('mock-')) {
       query = query.eq('folder_id', folderId) as typeof query;
     } else if (view === 'favoritos') {
       query = query.eq('is_favorite', true) as typeof query;
@@ -49,17 +120,20 @@ export function useRadares(
     }
 
     const { data } = await query;
-    const rows = (data as unknown as Radar[]) ?? [];
+    const real = ((data as unknown as RawRadarRow[]) ?? []).map(radarFromRaw);
 
+    // If navigating into a mock folder, skip real results.
+    const realFiltered = folderId && folderId.startsWith('mock-') ? [] : real;
+
+    let combined = [...realFiltered, ...filterMocks(view, folderId, search)];
     if (view === 'alertas') {
-      setRadars(rows.filter((r) => (r.radar_alerts[0]?.count ?? 0) > 0));
-    } else {
-      setRadars(rows);
+      combined = combined.filter((r) => (r.radar_alerts[0]?.count ?? 0) > 0);
     }
+
+    setRadars(combined);
     setLoading(false);
   }, [view, folderId, search]);
 
-  // fetch unread alert count for sidebar badge
   useEffect(() => {
     const supabase = createClient();
     supabase
@@ -74,10 +148,13 @@ export function useRadares(
     fetchRadars();
   }, [fetchRadars]);
 
+  // ── Mutations ──────────────────────────────────────────────────────────────
+
   const toggleFavorite = async (id: string, current: boolean) => {
     setRadars((prev) =>
       prev.map((r) => (r.id === id ? { ...r, is_favorite: !current } : r)),
     );
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
     const { error } = await supabase
       .from('radars')
@@ -94,6 +171,7 @@ export function useRadares(
     setRadars((prev) =>
       prev.map((r) => (r.id === id ? { ...r, folder_id: newFolderId } : r)),
     );
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
     const { error } = await supabase
       .from('radars')
@@ -104,44 +182,73 @@ export function useRadares(
 
   const deleteRadar = async (id: string) => {
     setRadars((prev) => prev.filter((r) => r.id !== id));
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
     await supabase.from('radars').delete().eq('id', id);
   };
 
   const archiveRadar = async (id: string) => {
     setRadars((prev) => prev.filter((r) => r.id !== id));
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
-    await supabase
-      .from('radars')
-      .update({ status: 'archived' })
-      .eq('id', id);
+    await supabase.from('radars').update({ status: 'archived' }).eq('id', id);
   };
 
   const duplicateRadar = async (radar: Radar): Promise<void> => {
+    if (radar.is_mock) {
+      // Mocks can't round-trip into the DB; the original remains visible.
+      return;
+    }
     const supabase = createClient();
     const { data: newRadar, error } = await supabase
       .from('radars')
       .insert({
         name: `${radar.name} (copia)`,
         description: radar.description,
-        operator: radar.operator,
-        min_signals_matched: radar.min_signals_matched,
+        top_level_operator: radar.top_level_operator,
         folder_id: radar.folder_id,
         status: 'warming_up',
       })
-      .select()
+      .select('id')
       .single();
     if (error || !newRadar) return;
-    if (radar.radar_signals.length > 0) {
-      await supabase.from('radar_signals').insert(
-        radar.radar_signals.map((rs) => ({
-          radar_id: (newRadar as { id: string }).id,
-          signal_id: rs.signal_id,
-          weight: 1,
-          is_required: true,
-        })),
-      );
+    const newId = (newRadar as { id: string }).id;
+
+    // Deep-clone clauses + clause_signals
+    for (const c of radar.clauses) {
+      const { data: newClause, error: cErr } = await supabase
+        .from('radar_clauses')
+        .insert({
+          radar_id: newId,
+          position: c.position,
+          operator: c.operator,
+          min_matches: c.min_matches,
+          is_exclusion: c.is_exclusion,
+        })
+        .select('id')
+        .single();
+      if (cErr || !newClause) {
+        await supabase.from('radars').delete().eq('id', newId);
+        return;
+      }
+      const newClauseId = (newClause as { id: string }).id;
+      if (c.signals.length > 0) {
+        const { error: csErr } = await supabase
+          .from('radar_clause_signals')
+          .insert(
+            c.signals.map((s, i) => ({
+              clause_id: newClauseId,
+              signal_id: s.id,
+              position: i,
+            })),
+          );
+        if (csErr) {
+          await supabase.from('radars').delete().eq('id', newId);
+          return;
+        }
+      }
     }
+
     fetchRadars();
   };
 
@@ -156,4 +263,16 @@ export function useRadares(
     archiveRadar,
     duplicateRadar,
   };
+}
+
+// Exported for [id]/page.tsx single-radar fetch
+export async function fetchRadarById(id: string): Promise<Radar | null> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from('radars')
+    .select(SELECT)
+    .eq('id', id)
+    .maybeSingle();
+  if (!data) return null;
+  return radarFromRaw(data as unknown as RawRadarRow);
 }

@@ -7,6 +7,7 @@ import { es } from 'date-fns/locale';
 import { createClient } from '@/lib/supabase/browser';
 import { toast } from 'sonner';
 import { MoveToFolderMenu } from './MoveToFolderMenu';
+import { RadarFormula } from './RadarFormula';
 import type { Radar, RadarFolder } from '@/lib/types/radares';
 
 interface Props {
@@ -40,12 +41,13 @@ export function RadarCard({
   const badge      = STATUS_BADGE[radar.status] ?? STATUS_BADGE.ready;
 
   const handleCardClick = async () => {
-    // Update last_viewed_at
-    const supabase = createClient();
-    await supabase
-      .from('radars')
-      .update({ last_viewed_at: new Date().toISOString() })
-      .eq('id', radar.id);
+    if (!radar.is_mock) {
+      const supabase = createClient();
+      await supabase
+        .from('radars')
+        .update({ last_viewed_at: new Date().toISOString() })
+        .eq('id', radar.id);
+    }
     router.push(`/radares/${radar.id}`);
   };
 
@@ -92,6 +94,17 @@ export function RadarCard({
     >
       {/* Row 1: favorite + name + menu */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+        {radar.is_mock && (
+          <div style={{ position: 'absolute', top: 10, right: 42 }}>
+            <span style={{
+              fontSize: 10, fontWeight: 600,
+              padding: '2px 8px', borderRadius: 4,
+              background: '#FEF3C7', color: '#92400E',
+            }}>
+              Datos de ejemplo
+            </span>
+          </div>
+        )}
         <button
           onClick={(e) => { e.stopPropagation(); onToggleFavorite(radar.id, radar.is_favorite); }}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0, marginTop: 1 }}
@@ -173,28 +186,15 @@ export function RadarCard({
         </div>
       </div>
 
-      {/* Signal chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 12 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-tertiary)', alignSelf: 'center', marginRight: 2, textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
-          {radar.operator === 'all' ? 'Combina' : radar.operator === 'any' ? 'Cualquiera' : 'Ponderado'}
-        </span>
-        {radar.radar_signals.slice(0, 4).map((rs) => (
-          <span
-            key={rs.signal_id}
-            style={{
-              fontSize: 11, padding: '2px 8px', borderRadius: 20,
-              background: 'var(--bg-muted)', color: 'var(--text-secondary)',
-              border: '1px solid var(--border)',
-            }}
-          >
-            {rs.signals.name}
-          </span>
-        ))}
-        {radar.radar_signals.length > 4 && (
-          <span style={{ fontSize: 11, color: 'var(--text-tertiary)', alignSelf: 'center' }}>
-            +{radar.radar_signals.length - 4}
-          </span>
-        )}
+      {/* Formula */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ marginBottom: 12 }}
+      >
+        <RadarFormula
+          clauses={radar.clauses}
+          top_level_operator={radar.top_level_operator}
+        />
       </div>
 
       {/* Footer: status badge + alerts + time */}

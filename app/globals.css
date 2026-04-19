@@ -22,6 +22,11 @@
   --serif:'Playfair Display',Georgia,serif;
   --sans:'Geist',system-ui,sans-serif;
   --ease:cubic-bezier(.25,.46,.45,.94);
+  /* Radar formula operator colors */
+  --op-and:#10B981;
+  --op-or:#3B82F6;
+  --op-not:#EC4899;
+  --op-min:#F59E0B;
 }
 html{scroll-behavior:smooth;font-size:16px}
 body{font-family:var(--sans);background:var(--white);color:var(--ink);overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}

@@ -9,6 +9,9 @@ import {
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { createClient } from '@/lib/supabase/browser';
+import { fetchRadarById } from '@/lib/hooks/useRadares';
+import { findMockRadar, findMockSnapshot } from '@/lib/mock/radares';
+import { RadarFormula } from '../_components/RadarFormula';
 import type { Radar, RadarSnapshot } from '@/lib/types/radares';
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -31,6 +34,16 @@ export default function RadarDetailPage({
 
   useEffect(() => {
     if (!radarId) return;
+
+    // Mock short-circuit
+    const mockRadar = findMockRadar(radarId);
+    if (mockRadar) {
+      setRadar(mockRadar);
+      setSnapshot(findMockSnapshot(radarId) ?? null);
+      setLoading(false);
+      return;
+    }
+
     const supabase = createClient();
 
     // Update last_viewed_at
@@ -41,23 +54,14 @@ export default function RadarDetailPage({
 
     // Fetch radar + snapshot in parallel
     Promise.all([
-      supabase
-        .from('radars')
-        .select(
-          `id, name, description, operator, status, is_favorite,
-           folder_id, last_viewed_at, updated_at, created_at,
-           radar_signals(signal_id, signals(id, name, type)),
-           radar_alerts(count)`,
-        )
-        .eq('id', radarId)
-        .single(),
+      fetchRadarById(radarId),
       supabase
         .from('radar_snapshot')
         .select('*')
         .eq('radar_id', radarId)
         .maybeSingle(),
-    ]).then(([radarRes, snapRes]) => {
-      setRadar((radarRes.data as unknown as Radar) ?? null);
+    ]).then(([radarData, snapRes]) => {
+      setRadar(radarData);
       setSnapshot((snapRes.data as unknown as RadarSnapshot) ?? null);
       setLoading(false);
     });
@@ -86,26 +90,41 @@ export default function RadarDetailPage({
           </svg>
         </button>
 
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
               {radar.name}
             </h1>
             <StatusBadge status={radar.status} />
+            {radar.is_mock && (
+              <span style={{
+                fontSize: 10, fontWeight: 600,
+                padding: '2px 8px', borderRadius: 4,
+                background: '#FEF3C7', color: '#92400E',
+              }}>
+                Datos de ejemplo
+              </span>
+            )}
             {(radar.radar_alerts[0]?.count ?? 0) > 0 && (
               <span style={{ fontSize: 12, color: '#EF4444', display: 'flex', alignItems: 'center', gap: 4 }}>
                 ⚠ {radar.radar_alerts[0].count} alerta{radar.radar_alerts[0].count > 1 ? 's' : ''} activa{radar.radar_alerts[0].count > 1 ? 's' : ''}
               </span>
             )}
           </div>
+          <div style={{ marginTop: 8 }}>
+            <RadarFormula
+              clauses={radar.clauses}
+              top_level_operator={radar.top_level_operator}
+            />
+          </div>
           {snapshot && (
-            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 12, color: 'var(--text-tertiary)', margin: '8px 0 0' }}>
               Actualizado {formatDistanceToNow(new Date(snapshot.updated_at), { addSuffix: true, locale: es })}
             </p>
           )}
         </div>
 
-        <FavoriteButton isFavorite={radar.is_favorite} radarId={radar.id} />
+        <FavoriteButton isFavorite={radar.is_favorite} radarId={radar.id} isMock={radar.is_mock} />
       </div>
 
       {/* Body */}
@@ -141,25 +160,15 @@ function WarmingUp({ radar }: { radar: Radar }) {
         Te avisaremos cuando el radar esté listo.
       </p>
 
-      {/* Signal preview */}
+      {/* Formula preview */}
       <div style={{ textAlign: 'left', marginBottom: 28 }}>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
-          Señales que lo componen
+          Fórmula del radar
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {radar.radar_signals.map((rs) => (
-            <span
-              key={rs.signal_id}
-              style={{
-                fontSize: 12, padding: '5px 12px', borderRadius: 20,
-                background: 'var(--bg-muted)', color: 'var(--text-secondary)',
-                border: '1px solid var(--border)',
-              }}
-            >
-              {rs.signals.name}
-            </span>
-          ))}
-        </div>
+        <RadarFormula
+          clauses={radar.clauses}
+          top_level_operator={radar.top_level_operator}
+        />
       </div>
     </div>
   );
@@ -343,10 +352,11 @@ function SentimentChip({ s }: { s: string }) {
   return <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, background: c.bg, color: c.color }}>{s}</span>;
 }
 
-function FavoriteButton({ isFavorite, radarId }: { isFavorite: boolean; radarId: string }) {
+function FavoriteButton({ isFavorite, radarId, isMock }: { isFavorite: boolean; radarId: string; isMock?: boolean }) {
   const [fav, setFav] = useState(isFavorite);
   const toggle = async () => {
     setFav(!fav);
+    if (isMock) return;
     const supabase = createClient();
     await supabase.from('radars').update({ is_favorite: !fav }).eq('id', radarId);
   };

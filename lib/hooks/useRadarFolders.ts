@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/browser';
+import { MOCK_FOLDERS } from '@/lib/mock/radares';
 import type { RadarFolder } from '@/lib/types/radares';
 
 export function useRadarFolders() {
-  const [folders, setFolders] = useState<RadarFolder[]>([]);
+  const [folders, setFolders] = useState<RadarFolder[]>(MOCK_FOLDERS);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -14,7 +15,8 @@ export function useRadarFolders() {
       .from('radar_folders')
       .select('id, name, icon, color, position, radars(count)')
       .order('position');
-    setFolders((data as unknown as RadarFolder[]) ?? []);
+    const real = (data as unknown as RadarFolder[]) ?? [];
+    setFolders([...real, ...MOCK_FOLDERS]);
     setLoading(false);
   }, []);
 
@@ -28,7 +30,8 @@ export function useRadarFolders() {
     color: string | null,
   ): Promise<RadarFolder> => {
     const supabase = createClient();
-    const maxPos = folders.reduce((m, f) => Math.max(m, f.position), 0);
+    const real = folders.filter((f) => !f.is_mock);
+    const maxPos = real.reduce((m, f) => Math.max(m, f.position), 0);
     const { data, error } = await supabase
       .from('radar_folders')
       .insert({ name, icon, color, position: maxPos + 1 })
@@ -36,11 +39,12 @@ export function useRadarFolders() {
       .single();
     if (error) throw error;
     const folder: RadarFolder = { ...(data as RadarFolder), radars: [{ count: 0 }] };
-    setFolders((prev) => [...prev, folder]);
+    setFolders((prev) => [...prev.filter((f) => !f.is_mock), folder, ...MOCK_FOLDERS]);
     return folder;
   };
 
   const updateFolder = async (id: string, updates: Partial<RadarFolder>) => {
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
     const { error } = await supabase
       .from('radar_folders')
@@ -53,6 +57,7 @@ export function useRadarFolders() {
   };
 
   const deleteFolder = async (id: string) => {
+    if (id.startsWith('mock-')) return;
     const supabase = createClient();
     const { error } = await supabase
       .from('radar_folders')
@@ -63,11 +68,11 @@ export function useRadarFolders() {
   };
 
   const reorderFolders = async (reordered: RadarFolder[]) => {
-    // Optimistic update
     setFolders(reordered);
     const supabase = createClient();
+    const real = reordered.filter((f) => !f.is_mock);
     await Promise.all(
-      reordered.map((f, i) =>
+      real.map((f, i) =>
         supabase
           .from('radar_folders')
           .update({ position: i + 1 })

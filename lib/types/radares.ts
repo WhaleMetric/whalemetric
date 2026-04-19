@@ -1,5 +1,19 @@
-export type RadarOperator = 'all' | 'any' | 'weighted';
+// ── Shared primitives ─────────────────────────────────────────────────────────
+
 export type RadarStatus = 'warming_up' | 'ready' | 'error' | 'archived';
+
+export type ClauseOperator = 'signal' | 'and' | 'or' | 'weighted';
+
+export type TopLevelOperator = 'and' | 'or';
+
+export interface UserSignal {
+  id: string;
+  name: string;
+  type: string;
+  status?: string;
+}
+
+// ── Folders ───────────────────────────────────────────────────────────────────
 
 export interface RadarFolder {
   id: string;
@@ -10,34 +24,67 @@ export interface RadarFolder {
   position: number;
   created_at?: string;
   radars?: { count: number }[];
+  is_mock?: boolean;
 }
 
-export interface UserSignal {
+// ── Radar (UI shape — hooks return this after transformation) ────────────────
+
+export interface Clause {
   id: string;
-  name: string;
-  type: string;
-  status: string;
-}
-
-export interface RadarSignalRow {
-  signal_id: string;
-  signals: UserSignal;
+  position: number;
+  operator: ClauseOperator;
+  min_matches: number | null;
+  is_exclusion: boolean;
+  signals: UserSignal[];
 }
 
 export interface Radar {
   id: string;
-  user_id: string;
+  user_id?: string;
   name: string;
   description: string | null;
-  operator: RadarOperator;
-  min_signals_matched: number | null;
+  top_level_operator: TopLevelOperator;
   status: RadarStatus;
   is_favorite: boolean;
   folder_id: string | null;
   last_viewed_at: string | null;
   updated_at: string;
   created_at: string;
-  radar_signals: RadarSignalRow[];
+  clauses: Clause[];
+  radar_alerts: { count: number }[];
+  is_mock?: boolean;
+}
+
+// ── Raw row shapes (what Supabase returns before we transform) ───────────────
+
+export interface RawClauseSignalRow {
+  signal_id: string;
+  position: number;
+  signals: UserSignal;
+}
+
+export interface RawClauseRow {
+  id: string;
+  position: number;
+  operator: ClauseOperator;
+  min_matches: number | null;
+  is_exclusion: boolean;
+  radar_clause_signals: RawClauseSignalRow[];
+}
+
+export interface RawRadarRow {
+  id: string;
+  user_id: string;
+  name: string;
+  description: string | null;
+  top_level_operator: TopLevelOperator;
+  status: RadarStatus;
+  is_favorite: boolean;
+  folder_id: string | null;
+  last_viewed_at: string | null;
+  updated_at: string;
+  created_at: string;
+  radar_clauses: RawClauseRow[];
   radar_alerts: { count: number }[];
 }
 
@@ -110,4 +157,10 @@ export interface RadarSnapshot {
   recent_news: RecentNewsItem[];
   has_enough_data: boolean;
   updated_at: string;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+export function isMockId(id: string): boolean {
+  return id.startsWith('mock-');
 }
